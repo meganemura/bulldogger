@@ -6,6 +6,7 @@ require_relative "bulldogger/capture"
 require_relative "bulldogger/run"
 require_relative "bulldogger/evidence"
 require_relative "bulldogger/probe"
+require_relative "bulldogger/record"
 
 # Ruby execution evidence for coding agents, as files: a failing test
 # writes a structured snapshot of its own failure, so an agent can read
@@ -81,6 +82,29 @@ module Bulldogger
 
     def probe_compare(path_a, path_b)
       Probe.compare(path_a, path_b)
+    end
+
+    # Traces every call, return, and raise in the block to a JSONL
+    # file. See lib/bulldogger/record.rb. Returns the written path, or
+    # nil if the switch is off. This is the expensive verb, which is
+    # why it is a verb: it costs roughly 4500ns per traced call, on
+    # every call rather than on a named few.
+    def record(&block)
+      Record.run(&block)
+    end
+
+    # Explicit-session counterpart to #record: call session.stop to
+    # finish the trace and get its path.
+    def record_start
+      Record.start
+    end
+
+    # Converts a written trace into SQLite for indexed querying.
+    # Returns nil when the sqlite3 gem is absent, which is the normal
+    # case -- JSONL is the canonical format and this is an adapter over
+    # it, so bulldogger never depends on sqlite3 at runtime.
+    def trace_to_sqlite(jsonl_path, db_path)
+      Record.to_sqlite(jsonl_path, db_path)
     end
 
     private

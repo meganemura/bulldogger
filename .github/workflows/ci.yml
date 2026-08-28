@@ -21,3 +21,4 @@ jobs:
       # Installing into the system gem home keeps the two in one place.
       - run: bundle install --jobs 4
       - run: bundle exec rake
+      - run: bundle exec rake coverage

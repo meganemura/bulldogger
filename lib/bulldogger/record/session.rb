@@ -32,6 +32,9 @@ module Bulldogger
       # Capture already does for :raise.
       SKIP_PATH_PREFIX = Bulldogger::FrameSource.default_skip_path_prefix
 
+      # Where Ruby reports TracePoint's own methods as defined.
+      INTERNAL_TRACE_POINT_PATH = "<internal:trace_point>"
+
       # sink: is an internal seam, not part of the public API a caller
       # is meant to use. Bulldogger::Record.start never passes it; it
       # exists only so the overhead benchmark (test/fixtures/record/
@@ -131,6 +134,16 @@ module Bulldogger
         # whatever the app passed in, and an app-defined #inspect
         # override is Ruby code outside this prefix.
         return if tp.path&.start_with?(SKIP_PATH_PREFIX)
+        # The path filter above cannot reach TracePoint#enable itself:
+        # it is defined in Ruby's own <internal:trace_point>, not under
+        # this library's lib/. Enabling the trace point is the last
+        # thing start does, and from the second session onward in a
+        # process the previous session has already armed the mechanism,
+        # so this session's own enable call returns while tracing is
+        # live and writes a phantom event the app never made. The event
+        # is bulldogger's own machinery, which is exactly what
+        # SKIP_PATH_PREFIX exists to keep out of a trace.
+        return if tp.path == INTERNAL_TRACE_POINT_PATH
         # Thread-local, not tp.disable (see @reentrant_key above): this
         # only needs to stop the current thread's own call chain from
         # recursing into itself (Formatter calling an app object's

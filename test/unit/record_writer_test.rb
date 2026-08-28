@@ -7,7 +7,7 @@ require "tmpdir"
 
 # Writer's real callers (Record::Session) only ever call #write_event
 # from inside a global TracePoint hook, which stdlib Coverage cannot
-# reliably observe (see the task report). Writer takes no TracePoint
+# reliably observe (see test/unit/tracepoint_coverage_blind_spot_test.rb). Writer takes no TracePoint
 # object itself, though -- #write_event's argument is a plain Hash --
 # so it is fully testable on its own, outside any hook.
 class RecordWriterTest < Minitest::Test

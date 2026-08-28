@@ -30,7 +30,7 @@ create one with these values:
 | Repository owner | `meganemura` |
 | Repository name | `bulldogger` |
 | Workflow filename | `release.yml` |
-| Environment | `release-bulldogger` |
+| Environment | `release` |
 | Workflow repository owner | Leave this field blank. |
 | Workflow repository name | Leave this field blank. |
 
@@ -46,8 +46,12 @@ publishers**, select **Create**, and enter the same values.
 
 ### Create the GitHub environment
 
-The workflow names `release-bulldogger` as its environment. Create that
-environment in the repository settings and add a required reviewer.
+The workflow names `release` as its environment. Create that environment
+in the repository settings and add a required reviewer.
+
+RubyGems.org matches this name exactly. The workflow, the environment in
+the repository settings, and the trusted publisher must all use the same
+name, or the push step fails to authenticate.
 
 Without a required reviewer the environment still satisfies
 RubyGems.org, and the release proceeds with no human confirmation.

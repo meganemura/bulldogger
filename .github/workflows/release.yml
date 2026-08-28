@@ -8,7 +8,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: release-bulldogger
+  group: release
   cancel-in-progress: false
 
 jobs:
@@ -16,10 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     # The environment is the approval gate. Publishing a gem version
     # cannot be undone -- yanking frees nothing, because the version
-    # number stays spent -- so a human confirms before the push, and
-    # RubyGems.org matches this exact name when it authorizes the
-    # trusted publisher.
-    environment: release-bulldogger
+    # number stays spent -- so a human confirms before the push.
+    #
+    # RubyGems.org matches this name exactly when it authorizes the
+    # trusted publisher, so changing it here without changing it in the
+    # publisher's settings breaks the release at the push step.
+    environment: release
     permissions:
       contents: write
       # Trusted Publishing signs in with a short-lived OIDC token

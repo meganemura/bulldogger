@@ -12,5 +12,12 @@ jobs:
       - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
         with:
           ruby-version: "4.0.6"
-          bundler-cache: true
+      # bundler-cache is off on purpose. It sets BUNDLE_PATH=vendor/bundle,
+      # which leaves the system gem home holding only Ruby's own bundled
+      # gems. One acceptance test builds a second bundle whose Gemfile
+      # omits debug, and installs it with `bundle install --local` from an
+      # unbundled environment; that resolver reads the system gem home, so
+      # a vendored parent bundle makes it fail to find the pinned minitest.
+      # Installing into the system gem home keeps the two in one place.
+      - run: bundle install --jobs 4
       - run: bundle exec rake

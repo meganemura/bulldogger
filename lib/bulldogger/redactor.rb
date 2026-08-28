@@ -9,7 +9,10 @@ module Bulldogger
   # must gate the inspect call, not follow it.
   class Redactor
     def initialize(patterns)
-      @patterns = patterns
+      # A Redactor uses the configuration snapshot from its construction.
+      # Config reassignment already has this boundary. Applying it to in-place
+      # array changes lets each name use one compiled match operation.
+      @pattern = Regexp.union(patterns)
     end
 
     def redact_name?(name)
@@ -23,8 +26,7 @@ module Bulldogger
     private
 
     def matches?(name)
-      text = name.to_s
-      @patterns.any? { |pattern| pattern.match?(text) }
+      @pattern.match?(name.to_s)
     end
   end
 end

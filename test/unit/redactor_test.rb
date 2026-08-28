@@ -41,6 +41,16 @@ class RedactorTest < Minitest::Test
     refute_includes entry["value"], "hunter2"
   end
 
+  def test_pattern_array_changes_do_not_change_an_existing_redactor
+    patterns = [/secret/i]
+    redactor = Bulldogger::Redactor.new(patterns)
+
+    patterns << /token/i
+
+    assert redactor.redact_name?("secret")
+    refute redactor.redact_name?("token")
+  end
+
   def test_redacted_locals_never_call_inspect
     # Named secret_thing here too, not just in the callee: this test's
     # own frame is captured along with the callee's, and any name that

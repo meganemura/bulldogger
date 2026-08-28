@@ -6,7 +6,6 @@ require_relative "bulldogger/capture"
 require_relative "bulldogger/run"
 require_relative "bulldogger/evidence"
 require_relative "bulldogger/probe"
-require_relative "bulldogger/record"
 
 # Ruby execution evidence for coding agents, as files: a failing test
 # writes a structured snapshot of its own failure, so an agent can read
@@ -20,6 +19,16 @@ require_relative "bulldogger/record"
 # redaction logic lives here; see capture.rb, formatter.rb, and
 # redactor.rb.
 module Bulldogger
+  # Autoloaded rather than required at the top of this file, because
+  # record.rb requires this file back: Record.start reads
+  # Bulldogger.config and Bulldogger.run_dir, so `require
+  # "bulldogger/record"` on its own has to work. Requiring in both
+  # directions makes a cycle, and Ruby warns that one file will see
+  # the other half-defined. Deferring until Bulldogger::Record is first
+  # named breaks it -- by then this file has finished loading, so
+  # record.rb's require of it is a no-op.
+  autoload :Record, File.expand_path("bulldogger/record", __dir__)
+
   class << self
     def config
       @config ||= Config.new

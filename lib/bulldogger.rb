@@ -5,6 +5,7 @@ require_relative "bulldogger/config"
 require_relative "bulldogger/capture"
 require_relative "bulldogger/run"
 require_relative "bulldogger/evidence"
+require_relative "bulldogger/probe"
 
 # Ruby execution evidence for coding agents, as files: a failing test
 # writes a structured snapshot of its own failure, so an agent can read
@@ -58,6 +59,28 @@ module Bulldogger
 
     def finish
       run.finish
+    end
+
+    # Watches target_strings (each "Klass#method" or "Klass.method")
+    # for the life of the block and writes one evidence file
+    # summarizing every call's argument/return shape. See
+    # lib/bulldogger/probe.rb. Returns the written path, or nil if the
+    # switch is off -- the block still runs either way, only the
+    # observing and writing are skipped.
+    def probe(*target_strings, &block)
+      Probe.call(target_strings, config: config, run: run, &block)
+    end
+
+    # Explicit-session counterpart to #probe: call session.finish to
+    # stop watching and write the evidence file. Returns nil, not a
+    # session, when the switch is off -- callers must guard the same
+    # way every other disabled-switch return value here is guarded.
+    def probe_start(*target_strings)
+      Probe.start(target_strings, config: config, run: run)
+    end
+
+    def probe_compare(path_a, path_b)
+      Probe.compare(path_a, path_b)
     end
 
     private

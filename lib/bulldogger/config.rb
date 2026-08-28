@@ -20,7 +20,7 @@ module Bulldogger
     ].freeze
 
     attr_accessor :enabled, :output_dir, :max_frames, :max_locals,
-                   :max_value_length, :max_pending, :redact_patterns,
+                   :max_value_length, :max_pending, :max_samples, :redact_patterns,
                    :frame_source
 
     def initialize
@@ -30,6 +30,7 @@ module Bulldogger
       @max_locals = 50
       @max_value_length = 200
       @max_pending = 32
+      @max_samples = 10
       @redact_patterns = DEFAULT_REDACT_PATTERNS.dup
       @frame_source = :auto
       apply_env_overrides

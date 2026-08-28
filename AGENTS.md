@@ -46,7 +46,16 @@ README, docs, comments, commit messages.
 - Degrade path when `capture_frames` is missing: `tp.binding` gives the
   raising frame's locals, `caller_locations` gives every frame's
   location without locals.
-- `require "debug"` at rest costs nothing measurable (1.01x).
+- `require "debug"` at rest costs nothing measurable (1.01x). Require
+  `debug/frame_info` instead: it defines `DEBUGGER__.capture_frames`
+  and stops there, while `debug` itself calls `DEBUGGER__.start` and
+  opens a debugger session.
+- `debug` is a bundled gem, not a default gem
+  (`Gem::Specification.find_by_name("debug").default_gem?` is false on
+  ruby 4.0.6). Under Bundler it loads only when the app's own Gemfile
+  asks for it; otherwise `require "debug/frame_info"` raises LoadError.
+  The degrade path is therefore the default under Bundler, not a rare
+  case, and it carries the same weight in tests as the full path.
 
 ## Conventions
 
@@ -55,5 +64,6 @@ README, docs, comments, commit messages.
   real suites, not asserted.
 - No publishing (gem push, repo visibility) without the owner's
   explicit instruction.
-- Dependency additions need the owner's approval. The core must run on
-  stdlib plus the debug default gem.
+- Dependency additions need the owner's approval. The core carries zero
+  runtime dependencies: it runs on stdlib alone, and uses `debug` only
+  when the host app already has it.

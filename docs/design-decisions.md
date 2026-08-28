@@ -101,9 +101,9 @@ Early estimates measured a different amount of work.
 Using those estimates would state a low probe cost and a high record cost.
 Measurement of the shipped paths corrected both directions.
 
-The common proportionality harness measured about 1,330 ns per targeted probe call.
-It measured about 4,500 ns per traced record call.
-The record-specific harness measured 40.94x for capture and 58.34x with file output.
+The common proportionality harness measured 1353.3 ns per targeted probe call.
+It measured 3872.2 ns per traced record call.
+The record-specific harness measured 34.18x for value capture and 50.56x with file output.
 
 ## Use proportionality as the performance rule
 
@@ -140,3 +140,53 @@ The unit setup resets the module singleton before each test.
 That reset also stops an outer dogfood instance.
 An instance API would let the subject and the test tool coexist.
 That API is planned after version 0.1.
+
+## Add independent instances in version 0.2
+
+Version 0.2 adds `Bulldogger::Instance` and makes the module a facade over a default instance.
+Each instance owns its capture subscription, configuration, run, and evidence state.
+
+A module singleton could not serve as both the unit-test subject and the outer observer.
+The unit setup reset the singleton for isolation and stopped the outer observer.
+The resulting failure evidence used `capture_mode: missed` and contained zero frames.
+
+The Minitest and RSpec integrations accept an assigned instance and use `Bulldogger.default` when no instance is assigned.
+With a separate outer instance, the same unit-suite failure used `capture_frames` and contained 20 frames.
+
+Dogfooding now runs the unit and acceptance suites, and a green unit run writes zero evidence files.
+
+## Match one redaction union in version 0.2
+
+The redactor compiles its pattern array with `Regexp.union` during construction.
+Each name check performs one regular expression match instead of nine matches.
+
+The results matched for 26 boundary names and 2,000 random names.
+The record harness measured value capture at 34.18x and the complete path at 50.56x.
+
+Construction defines the pattern snapshot boundary.
+An in-place array change after construction does not affect an existing redactor.
+Configuration reassignment already had the same effective boundary.
+
+## Treat TracePoint callback suppression as an observation limit
+
+Ruby suppresses trace events while a `TracePoint` callback runs.
+A probe cannot observe a target method that another `TracePoint` callback calls.
+
+Bulldogger serializes failure values inside its `:raise` callback.
+A probe aimed at that serialization path reports zero calls for every target.
+Those zero counts mean that the calls were never visible to the probe.
+They do not show that the methods never ran.
+
+This VM behavior imposes an observation limit on the available evidence.
+Timing measurements guided the redaction change because a probe could not observe this path.
+The property tests verified that the redaction behavior stayed the same.
+
+## Update the explicit verb measurements in version 0.2
+
+The common proportionality harness measured 1353.3 ns per targeted probe call.
+It measured 3872.2 ns per traced record call.
+The proportionality law held in both measured directions.
+
+At M/N of 0.25, the publication point measured probe at 9.07x and record at 103.72x.
+These values describe the fixture call graph.
+The performance rule remains a proportionality based on M and N.

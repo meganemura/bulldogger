@@ -7,7 +7,7 @@ The run directory also contains `index.json`, which lists the failure files.
 
 | Field | Type | Presence | Meaning |
 |---|---|---|---|
-| `schema_version` | Integer | always | Schema version. Version 0.1.0 writes `1`. |
+| `schema_version` | Integer | always | Schema version. Versions 0.1.0 and 0.2.0 write `1`. |
 | `tool` | Object | always | Writer name and version. |
 | `captured_at` | String | always | UTC write time in `YYYY-MM-DDTHH:MM:SSZ` format. |
 | `capture_mode` | String | always | `capture_frames`, `degraded`, or `missed`. |
@@ -79,7 +79,7 @@ A local name that matches a redaction pattern has this shape:
 ```
 
 The redacted entry has no `value` field.
-Version 0.1.0 emits only `"name"` as the `reason` value.
+Versions 0.1.0 and 0.2.0 emit only `"name"` as the `reason` value.
 
 Hash-key redaction appears inside the parent value String:
 
@@ -109,8 +109,8 @@ This projection came from a generated Minitest failure file:
 ```json
 {
   "schema_version": 1,
-  "tool": {"name": "bulldogger", "version": "0.1.0"},
-  "skill": "/home/you/.local/share/gem/ruby/4.0.0/gems/bulldogger-0.1.0/skills/bulldogger/SKILL.md",
+  "tool": {"name": "bulldogger", "version": "0.2.0"},
+  "skill": "/home/you/.local/share/gem/ruby/4.0.0/gems/bulldogger-0.2.0/skills/bulldogger/SKILL.md",
   "capture_mode": "capture_frames",
   "test": {
     "framework": "minitest",
@@ -183,7 +183,7 @@ The following complete file came from recording an exception before capture star
 ```json
 {
   "schema_version": 1,
-  "tool": {"name": "bulldogger", "version": "0.1.0"},
+  "tool": {"name": "bulldogger", "version": "0.2.0"},
   "captured_at": "2026-08-28T07:58:25Z",
   "capture_mode": "missed",
   "test": {
@@ -268,8 +268,8 @@ This excerpt came from a generated probe of `ProseSample#amount`:
 {
   "schema_version": 1,
   "kind": "probe",
-  "tool": {"name": "bulldogger", "version": "0.1.0"},
-  "skill": "/home/you/.local/share/gem/ruby/4.0.0/gems/bulldogger-0.1.0/skills/bulldogger/SKILL.md",
+  "tool": {"name": "bulldogger", "version": "0.2.0"},
+  "skill": "/home/you/.local/share/gem/ruby/4.0.0/gems/bulldogger-0.2.0/skills/bulldogger/SKILL.md",
   "targets": ["ProseSample#amount"],
   "methods": {
     "ProseSample#amount": {

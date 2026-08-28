@@ -5,7 +5,7 @@ Each JSON file contains the exception, the backtrace, and captured frame values.
 The failure output gives the absolute path to that file.
 
 Development and measurements used Ruby 4.0.6 and debug 1.11.1.
-bulldogger 0.1.0 is released.
+bulldogger 0.2.0 adds independent instances and extends dogfooding to the unit suite.
 
 ## Install
 
@@ -53,6 +53,31 @@ require "bulldogger/rspec"
 
 Each entry point starts capture and records each failed test.
 It finishes the run index when the suite ends.
+
+## Use independent instances
+
+The `Bulldogger` module delegates its API to `Bulldogger.default`.
+Existing calls such as `Bulldogger.start` and `Bulldogger.probe` use that default instance.
+
+Create a separate instance when two capture lifecycles must run at the same time:
+
+```ruby
+observer = Bulldogger::Instance.new
+observer.start
+```
+
+Each instance owns its configuration, capture subscription, run, and evidence state.
+It also provides the failure, probe, record, and SQLite conversion methods from the module facade.
+
+An integration can use an assigned instance instead of the default:
+
+```ruby
+Bulldogger::Minitest.instance = observer
+Bulldogger::RSpec.instance = observer
+```
+
+Assign the instance before the suite starts.
+This separation lets an outer observer remain active while test setup replaces the default instance.
 
 ## Three approaches
 
@@ -204,13 +229,16 @@ A green suite can still raise and rescue exceptions, and each exception incurs t
 ### Explicit verb cost
 
 The proportionality harness used one app fixture for both verbs.
-It measured about 1,330 ns per targeted method call for `probe`.
-It measured about 4,500 ns per traced call for `record`.
+It measured 1353.3 ns per targeted method call for `probe`.
+It measured 3872.2 ns per traced call for `record`.
 
 `probe` cost scales with calls to the targeted method, which the harness names M.
 `record` cost scales with all traced calls, which the harness names N.
-With M/N at 0.25, the fixture measured `probe` at 8.28x and `record` at 111.76x.
+With M/N at 0.25, the fixture measured `probe` at 9.07x and `record` at 103.72x.
 These ratios describe this app fixture, and another app has a different M/N value.
+
+The record-specific harness measured value capture at 34.18x.
+The complete path, including the JSONL write, measured 50.56x.
 
 `probe` and `record` are explicit verbs for one focused run before or after a change.
 Do not apply either verb continuously to the full suite.
@@ -255,6 +283,9 @@ The default patterns match these names without regard to case:
 The patterns favor redaction when a name is ambiguous.
 For example, `/auth/i` also matches `author` and `authorized`.
 Applications can replace `Bulldogger.config.redact_patterns` with their own regular expressions.
+Bulldogger compiles these patterns into one union when it constructs a redactor.
+An in-place change to the source array does not change an existing redactor.
+Assign a new pattern array before Bulldogger constructs the capture or trace session that will use it.
 
 bulldogger also checks keys while it renders a Hash.
 A matching key has the string `"[REDACTED]"` as its rendered value.

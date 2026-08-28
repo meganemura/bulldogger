@@ -1,7 +1,7 @@
 ---
 name: bulldogger
 description: Use bulldogger failure evidence, targeted probes, and full records to inspect Ruby runtime behavior or verify a code change.
-compatibility: Uses files from bulldogger 0.1.0. The query examples require jq. SQLite conversion requires the optional sqlite3 gem.
+compatibility: Uses files from bulldogger 0.2.0. The query examples require jq. SQLite conversion requires the optional sqlite3 gem.
 license: MIT
 ---
 
@@ -23,6 +23,18 @@ Read [record traces](references/record.md) for JSONL events, limits, and queries
 
 `probe` and `record` are explicit, expensive verbs for one focused run.
 The environment disable switches stop all three approaches.
+
+## Check the TracePoint visibility limit
+
+Ruby suppresses trace events while a `TracePoint` callback runs.
+This rule applies when the target library uses TracePoint, including Bulldogger itself.
+
+A probe reports zero calls when another TracePoint callback invokes every target method.
+Read these zeros as "never visible to this probe."
+Do not infer that the target methods never ran.
+
+Use timing evidence to locate costs inside the callback.
+Use direct or property tests to verify behavior after a change.
 
 ## Start from a failure
 

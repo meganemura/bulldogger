@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bulldogger/skill"
+require "bulldogger/version"
+
+usage = "Usage: bulldogger skill path | bulldogger version | bulldogger --version"
+
+case ARGV
+when ["skill", "path"]
+  path = Bulldogger.skill_path
+  if path
+    puts path
+  else
+    warn "bulldogger: the installed skill is unavailable"
+    exit 1
+  end
+when ["version"], ["--version"]
+  puts Bulldogger::VERSION
+else
+  warn usage
+  exit 1
+end

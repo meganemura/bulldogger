@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
+require_relative "../skill"
 
 module Bulldogger
   module Probe
@@ -45,7 +46,7 @@ module Bulldogger
       end
 
       def self.payload_for(config:, targets:, stats:, started_at:)
-        {
+        payload = {
           "schema_version" => 1,
           "kind" => "probe",
           "tool" => { "name" => "bulldogger", "version" => Bulldogger::VERSION },
@@ -54,6 +55,9 @@ module Bulldogger
           "methods" => targets.each_with_object({}) { |t, h| h[t.label] = stats[t.label].to_h },
           "limits" => { "max_samples" => config.max_samples, "max_value_length" => config.max_value_length }
         }
+        skill_file = Bulldogger::Skill.file
+        payload["skill"] = skill_file if skill_file
+        payload
       end
       private_class_method :next_sequence, :slug_for, :payload_for
     end

@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "version"
+require_relative "skill"
 
 module Bulldogger
   # Assembles and writes one evidence file: the exception, the test it
@@ -52,6 +53,8 @@ module Bulldogger
         "exception" => build_exception_section(exception),
         "frames" => snapshot ? snapshot["frames"] : []
       }
+      skill_file = Bulldogger::Skill.file
+      payload["skill"] = skill_file if skill_file
       frames_omitted = snapshot ? snapshot["frames_omitted"] : 0
       payload["frames_omitted"] = frames_omitted if frames_omitted&.positive?
       payload["frames_unavailable_reason"] = @capture.reason_for_missing(exception) unless snapshot

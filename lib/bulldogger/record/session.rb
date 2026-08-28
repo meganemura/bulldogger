@@ -3,6 +3,7 @@
 require_relative "../redactor"
 require_relative "../formatter"
 require_relative "../frame_source"
+require_relative "../skill"
 require_relative "writer"
 
 module Bulldogger
@@ -116,13 +117,16 @@ module Bulldogger
       private
 
       def header
-        {
+        value = {
           "schema_version" => 1,
           "kind" => "record",
           "started_at" => Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
           "events" => WRITTEN_EVENTS,
           "limits" => { "max_value_length" => @config.max_value_length }
         }
+        skill_file = Bulldogger::Skill.file
+        value["skill"] = skill_file if skill_file
+        value
       end
 
       def handle(tp)

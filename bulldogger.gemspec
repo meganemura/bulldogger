@@ -32,7 +32,9 @@ Gem::Specification.new do |spec|
   # bulldogger for the first time meets it through a failure message,
   # with no network: the schema reference and the skill must already be
   # on disk next to the code that wrote the file.
-  spec.files = Dir["lib/**/*.rb", "docs/**/*.md", "skills/**/*.md", "README.md", "LICENSE*"]
+  spec.files = Dir["lib/**/*.rb", "exe/**", "docs/**/*.md", "skills/**/*.md", "README.md", "LICENSE*"]
+  spec.bindir = "exe"
+  spec.executables = ["bulldogger"]
   spec.require_paths = ["lib"]
 
   # No runtime dependency: the core must run on stdlib alone, so an

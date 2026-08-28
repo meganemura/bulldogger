@@ -14,6 +14,8 @@ Choose the smallest evidence source that answers the question:
 - Use `record` when you must follow the full call sequence.
 
 Use the available evidence before you add logging or infer values from source.
+The evidence `skill` key points to this file when it is available.
+Run `bulldogger skill path` to print its installed directory.
 
 Read [failure evidence](references/failure-evidence.md) for snapshot modes, frames, limits, and missing values.
 Read [probe evidence](references/probe.md) for method shapes, raised exits, samples, and comparisons.

@@ -17,6 +17,7 @@ The run directory also contains `index.json`, which lists the failure files.
 | `frames_omitted` | Integer | when positive | Frames removed by `max_frames`. |
 | `frames_unavailable_reason` | String | in missed mode | Reason for an empty frame list. |
 | `limits` | Object | always | Limits used for this capture. |
+| `skill` | String | when available | Absolute path to the installed `SKILL.md`. |
 
 ## Test fields
 
@@ -109,6 +110,7 @@ This projection came from a generated Minitest failure file:
 {
   "schema_version": 1,
   "tool": {"name": "bulldogger", "version": "0.1.0"},
+  "skill": "/home/you/.local/share/gem/ruby/4.0.0/gems/bulldogger-0.1.0/skills/bulldogger/SKILL.md",
   "capture_mode": "capture_frames",
   "test": {
     "framework": "minitest",
@@ -258,6 +260,7 @@ The `latest` symlink points to the last finished run when the filesystem support
 
 `Bulldogger.probe` writes one JSON file after the observed block finishes.
 The file has `kind: "probe"` and a `methods` entry for each target.
+It also has the `skill` path when the installed gem contains the skill file.
 
 This excerpt came from a generated probe of `ProseSample#amount`:
 
@@ -266,6 +269,7 @@ This excerpt came from a generated probe of `ProseSample#amount`:
   "schema_version": 1,
   "kind": "probe",
   "tool": {"name": "bulldogger", "version": "0.1.0"},
+  "skill": "/home/you/.local/share/gem/ruby/4.0.0/gems/bulldogger-0.1.0/skills/bulldogger/SKILL.md",
   "targets": ["ProseSample#amount"],
   "methods": {
     "ProseSample#amount": {

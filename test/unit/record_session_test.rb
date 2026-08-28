@@ -30,6 +30,19 @@ class RecordSessionTest < Minitest::Test
     @session = new_session
   end
 
+  def test_header_has_a_resolving_skill_path
+    header = @session.send(:header)
+
+    assert_equal File.join(Bulldogger.skill_path, "SKILL.md"), header["skill"]
+    assert File.file?(header["skill"])
+  end
+
+  def test_header_omits_skill_when_the_skill_is_missing
+    Bulldogger::Skill.stub(:file, nil) do
+      refute @session.send(:header).key?("skill")
+    end
+  end
+
   def test_handle_writes_a_call_event_for_a_real_call
     call_tp, = capture(:amount) { Billing::Invoice.new.amount(4) }
 

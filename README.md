@@ -5,7 +5,7 @@ Each JSON file contains the exception, the backtrace, and captured frame values.
 The failure output gives the absolute path to that file.
 
 Development and measurements used Ruby 4.0.6 and debug 1.11.1.
-Publication of bulldogger 0.1.0 is pending.
+bulldogger 0.1.0 is released.
 
 ## Install
 
@@ -22,6 +22,20 @@ Bundler only exposes it when the application Gemfile includes it.
 
 Without `debug`, bulldogger records locals from the raising frame.
 It records file, line, and label data for the remaining frames.
+
+Install the skill on an agent host from the default branch:
+
+```sh
+gh skill install meganemura/bulldogger
+```
+
+Use the copy that matches the installed gem when version alignment matters:
+
+```sh
+bulldogger skill path
+```
+
+The first command installs the skill on the agent host. The second command prints the matching gem copy.
 
 Add one framework entry point.
 

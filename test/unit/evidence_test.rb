@@ -32,6 +32,19 @@ class EvidenceTest < Minitest::Test
     assert_kind_of Array, data["exception"]["backtrace"]
     assert_kind_of Array, data["frames"]
     assert_kind_of Hash, data["limits"]
+    assert_equal File.join(Bulldogger.skill_path, "SKILL.md"), data["skill"]
+    assert File.file?(data["skill"])
+  end
+
+  def test_record_failure_omits_skill_when_the_skill_is_missing
+    Bulldogger::Skill.stub(:file, nil) do
+      path = Bulldogger.record_failure(
+        exception: trigger_raise,
+        test: { framework: "minitest", id: "x", file: "f.rb", line: 1 }
+      )
+
+      refute JSON.parse(File.read(path)).key?("skill")
+    end
   end
 
   def test_a_huge_exception_message_is_truncated_and_marked

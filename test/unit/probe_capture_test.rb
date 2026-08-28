@@ -129,6 +129,8 @@ class ProbeCaptureTest < Minitest::Test
     payload = JSON.parse(File.read(path))
 
     assert_equal 3, payload["limits"]["max_samples"]
+    assert_equal File.join(Bulldogger.skill_path, "SKILL.md"), payload["skill"]
+    assert File.file?(payload["skill"])
   end
 
   def test_a_parameter_named_like_a_secret_is_redacted_in_its_sample

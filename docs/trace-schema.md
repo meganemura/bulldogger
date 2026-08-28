@@ -8,7 +8,7 @@ The first line is a header, and each later line is one event.
 This header came from a generated trace:
 
 ```json
-{"schema_version":1,"kind":"record","started_at":"2026-08-28T12:15:18Z","events":["call","return","raise"],"limits":{"max_value_length":200}}
+{"schema_version":1,"kind":"record","started_at":"2026-08-28T12:15:18Z","events":["call","return","raise"],"limits":{"max_value_length":200},"skill":"/home/you/.local/share/gem/ruby/4.0.0/gems/bulldogger-0.1.0/skills/bulldogger/SKILL.md"}
 ```
 
 | Field | Type | Meaning |
@@ -18,6 +18,7 @@ This header came from a generated trace:
 | `started_at` | String | UTC start time. |
 | `events` | Array | Event kinds written after the header. |
 | `limits` | Object | Value limits used for this trace. |
+| `skill` | String | Absolute path to `SKILL.md` when the file is available. |
 
 ## Events
 

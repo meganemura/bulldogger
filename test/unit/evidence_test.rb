@@ -49,7 +49,49 @@ class EvidenceTest < Minitest::Test
 
     assert_equal "missed", data["capture_mode"]
     assert_equal [], data["frames"]
-    assert data["frames_unavailable_reason"]
+    # Bulldogger.start was never called in this test, so the tool is
+    # enabled but not running -- the one case frames_unavailable_reason
+    # "capture_disabled" is meant for. A disabled *switch* is a
+    # different case entirely and record_failure refuses to write at
+    # all for that one (see test_disabled_switch_* below).
+    assert_equal "capture_disabled", data["frames_unavailable_reason"]
+  end
+
+  def test_disabled_switch_makes_record_failure_write_nothing
+    Bulldogger.config.enabled = false
+    output_dir = Bulldogger.config.output_dir
+
+    exception = trigger_raise
+    path = Bulldogger.record_failure(
+      exception: exception,
+      test: { framework: "minitest", id: "x", file: "f.rb", line: 1 }
+    )
+
+    assert_nil path
+    assert_equal [], Dir.children(output_dir)
+  end
+
+  def test_disabled_switch_makes_finish_write_nothing
+    Bulldogger.config.enabled = false
+    output_dir = Bulldogger.config.output_dir
+
+    Bulldogger.record_failure(
+      exception: trigger_raise,
+      test: { framework: "minitest", id: "x", file: "f.rb", line: 1 }
+    )
+    Bulldogger.finish
+
+    assert_equal [], Dir.children(output_dir)
+  end
+
+  # run_dir is public API, so it is reachable by a caller who never
+  # goes through record_failure. The switch has to hold there too.
+  def test_disabled_switch_makes_run_dir_create_nothing
+    Bulldogger.config.enabled = false
+    output_dir = Bulldogger.config.output_dir
+
+    assert_nil Bulldogger.run_dir
+    assert_equal [], Dir.children(output_dir)
   end
 
   def test_finish_without_any_failure_creates_no_run_directory

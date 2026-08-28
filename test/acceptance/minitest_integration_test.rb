@@ -62,6 +62,33 @@ class MinitestIntegrationTest < Minitest::Test
     assert no_run_directory?(output_dir)
   end
 
+  # BULLDOGGER_DISABLE means "the switch is off", not "capture came up
+  # empty" -- run_fixture twice (switch off, then on) and compare the
+  # deterministic parts of the summary (exit status, run/failure
+  # counts) to prove the switch changes nothing about the suite's own
+  # result. Timing text in stdout varies between runs and is not
+  # compared.
+  def test_disabled_switch_writes_nothing_and_leaves_the_suite_result_unchanged
+    baseline_stdout, _stderr, baseline_status, = run_fixture("ruby", RED_FIXTURE)
+    stdout, _stderr, status, output_dir = run_fixture("ruby", RED_FIXTURE, env: { "BULLDOGGER_DISABLE" => "1" })
+
+    assert_equal baseline_status.exitstatus, status.exitstatus
+    assert_equal summary_counts(baseline_stdout), summary_counts(stdout)
+    assert no_run_directory?(output_dir)
+    assert_empty evidence_paths_from_stdout(stdout)
+  end
+
+  # BULLDOGGER_DISABLED is the alias covered by the config unit tests;
+  # this is the one place the alias is exercised end to end, through a
+  # real child process rather than a Config instance.
+  def test_disabled_alias_env_var_also_writes_nothing
+    stdout, _stderr, status, output_dir = run_fixture("ruby", RED_FIXTURE, env: { "BULLDOGGER_DISABLED" => "1" })
+
+    refute status.success?, "the red fixture is still expected to fail"
+    assert no_run_directory?(output_dir)
+    assert_empty evidence_paths_from_stdout(stdout)
+  end
+
   def test_forced_degraded_mode_marks_frame0_only
     _stdout, _stderr, status, output_dir = run_fixture("ruby", RED_FIXTURE, env: { "BULLDOGGER_FRAME_SOURCE" => "degraded" })
 
@@ -76,6 +103,15 @@ class MinitestIntegrationTest < Minitest::Test
   end
 
   private
+
+  # Minitest's own summary line ("2 runs, 1 assertions, 1 failures, 1
+  # errors, 0 skips") is the one part of stdout that is both
+  # deterministic and proves the suite's result: the elapsed-time text
+  # around it varies run to run, so comparing full stdout would be
+  # comparing noise.
+  def summary_counts(stdout)
+    stdout[/\d+ runs, \d+ assertions, \d+ failures, \d+ errors, \d+ skips/]
+  end
 
   # deep_raise's seeded locals live in app.rb's Order.total frame,
   # which capture_frames places at index 0 (the raise site itself).

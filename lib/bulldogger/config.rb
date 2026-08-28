@@ -46,7 +46,11 @@ module Bulldogger
       when "degraded" then @frame_source = :degraded
       end
 
-      @enabled = false if ENV["BULLDOGGER_DISABLE"] == "1"
+      # BULLDOGGER_DISABLE is the documented name; BULLDOGGER_DISABLED is
+      # accepted too. An adjective is the form English speakers reach
+      # for first, and a kill switch that silently ignores the natural
+      # spelling is worse than one that accepts an extra name.
+      @enabled = false if ENV["BULLDOGGER_DISABLE"] == "1" || ENV["BULLDOGGER_DISABLED"] == "1"
     end
   end
 end

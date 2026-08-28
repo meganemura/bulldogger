@@ -24,6 +24,12 @@ module Bulldogger
     end
 
     def record_failure(exception:, test:)
+      # A disabled switch means "wrote nothing" -- not "wrote an empty
+      # missed record". Writing capture_mode: missed here would mean
+      # a user who turned this off still gets a run directory and a
+      # frames_unavailable_reason, which reads as "tried and failed"
+      # rather than "did not run", the opposite of what they asked for.
+      return nil unless @config.enabled
       return nil if exception.nil?
 
       path = @run.next_path(slug_for(test))

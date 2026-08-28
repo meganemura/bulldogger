@@ -22,7 +22,14 @@ module Bulldogger
       @mutex = Mutex.new
     end
 
+    # Returns nil when the switch is off. A kill switch earns its name
+    # only if every public path honours it, so this one refuses even
+    # though record_failure and finish already refuse on their own: a
+    # caller who reads the API and asks for the run directory directly
+    # must not be the one hole that still writes to disk.
     def dir
+      return nil unless @config.enabled
+
       @mutex.synchronize { ensure_dir }
     end
 
@@ -49,6 +56,11 @@ module Bulldogger
         return if @finished
 
         @finished = true
+        # A disabled switch must produce nothing, even if some other
+        # caller reached run_dir directly and already created @dir --
+        # this guard does not depend on record_failure's own refusal
+        # to touch @dir being the only path here.
+        return unless @config.enabled
         # No @dir means record was never called: a green run. Writing
         # an index for zero failures would create the very directory
         # the zero-cost-when-green claim says must not exist.

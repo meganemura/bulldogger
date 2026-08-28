@@ -254,6 +254,76 @@ An Array or Hash uses a trailing `…` to mark elements after the first 10.
 Each failure path is relative to the run directory.
 The `latest` symlink points to the last finished run when the filesystem supports symlinks.
 
+## Probe evidence
+
+`Bulldogger.probe` writes one JSON file after the observed block finishes.
+The file has `kind: "probe"` and a `methods` entry for each target.
+
+This excerpt came from a generated probe of `ProseSample#amount`:
+
+```json
+{
+  "schema_version": 1,
+  "kind": "probe",
+  "tool": {"name": "bulldogger", "version": "0.1.0"},
+  "targets": ["ProseSample#amount"],
+  "methods": {
+    "ProseSample#amount": {
+      "calls": 3,
+      "raised_exits": 1,
+      "parameters": [["req", "mult"], ["key", "discount"], ["key", "api_token"]],
+      "params": {
+        "discount": {
+          "classes": {"NilClass": 2, "TrueClass": 1},
+          "nil_count": 2,
+          "samples": [{"value": "nil"}, {"value": "true"}, {"value": "nil"}]
+        },
+        "api_token": {
+          "classes": {"NilClass": 2, "String": 1},
+          "nil_count": 2,
+          "samples": [
+            {"redacted": true, "reason": "name"},
+            {"redacted": true, "reason": "name"},
+            {"redacted": true, "reason": "name"}
+          ]
+        }
+      },
+      "returns": {
+        "classes": {"Integer": 1, "NilClass": 1},
+        "nil_count": 1,
+        "samples": [{"value": "21"}, {"value": "nil"}]
+      },
+      "raised": {"ArgumentError": 1},
+      "callers": {"-e:1:in 'block in <main>'": 3}
+    }
+  },
+  "limits": {"max_samples": 10, "max_value_length": 200}
+}
+```
+
+### Probe method fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `calls` | Integer | Calls observed for this target. |
+| `raised_exits` | Integer | Calls that left the method through an exception. |
+| `parameters` | Array | Declared parameter kinds and names. |
+| `params` | Object | Class counts, `nil` counts, and samples for each named argument. |
+| `returns` | Object | Class counts, `nil` count, and samples for normal returns. |
+| `raised` | Object | Exception class counts for raised exits. |
+| `callers` | Object | Call-site strings and their counts. |
+
+A raised exit does not increase the return count.
+This rule distinguishes an exception exit from a normal `nil` return.
+
+Each parameter and return bucket counts every observed value.
+The `samples` array contains the first `max_samples` rendered values.
+When later values exist, `samples_omitted` gives their count.
+Redaction and value limits use the failure evidence rules.
+
+`Bulldogger.probe_compare` compares two probe files by their behavior shape.
+Its result has `identical` and `differences` fields.
+
 ## jq queries
 
 These queries ran against generated evidence files.
@@ -296,4 +366,23 @@ List failed test identifiers from the run index:
 
 ```sh
 jq '[.failures[].test.id]' tmp/bulldogger/latest/index.json
+```
+
+List the call count, raised exits, and callers from probe evidence:
+
+```sh
+jq '.methods | to_entries[] | {
+  method: .key, calls: .value.calls,
+  raised_exits: .value.raised_exits, callers: .value.callers
+}' probe.json
+```
+
+List parameter and return `nil` counts:
+
+```sh
+jq '.methods | to_entries[] | {
+  method: .key,
+  params: (.value.params | map_values(.nil_count)),
+  returns: .value.returns.nil_count
+}' probe.json
 ```

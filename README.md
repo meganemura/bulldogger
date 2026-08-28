@@ -40,6 +40,18 @@ require "bulldogger/rspec"
 Each entry point starts capture and records each failed test.
 It finishes the run index when the suite ends.
 
+## Three approaches
+
+bulldogger provides three ways to collect runtime evidence:
+
+- A failure snapshot is the default. Green tests do not capture data when they raise no exception.
+- `probe` watches named methods during one explicit run.
+- `record` traces all Ruby method calls during one explicit run.
+
+Use a failure snapshot when a failed test already provides an evidence path.
+Use `probe` to inspect one method or to compare behavior before and after a change.
+Use `record` when you must follow the full call sequence.
+
 ## Failure output
 
 This output came from:
@@ -74,6 +86,79 @@ tmp/bulldogger/
 The [`bulldogger` skill](skills/bulldogger/SKILL.md) tells an agent how to inspect these files.
 The [evidence schema](docs/evidence-schema.md) defines every field and capture mode.
 
+## Target a method with probe
+
+Wrap the relevant test or operation with a named target:
+
+```ruby
+before_path = Bulldogger.probe("Billing::Invoice#amount") do
+  run_related_test
+end
+```
+
+The evidence summarizes argument and return classes, `nil` values, raised exits, and callers.
+It serializes the first 10 samples by default and counts every call.
+
+Run the probe before and after a change, then compare the two files:
+
+```ruby
+result = Bulldogger.probe_compare(before_path, after_path)
+result.fetch("identical")
+```
+
+An `identical` value of `true` shows that the compared behavior stayed the same.
+The comparison covers call counts, classes, `nil` counts, raised exits, parameters, callers, and normalized samples.
+
+This excerpt came from a generated probe file:
+
+```json
+{
+  "kind": "probe",
+  "targets": ["ProseSample#amount"],
+  "methods": {
+    "ProseSample#amount": {
+      "calls": 3,
+      "raised_exits": 1,
+      "returns": {
+        "classes": {"Integer": 1, "NilClass": 1},
+        "nil_count": 1,
+        "samples": [{"value": "21"}, {"value": "nil"}]
+      },
+      "raised": {"ArgumentError": 1},
+      "callers": {"-e:1:in 'block in <main>'": 3}
+    }
+  },
+  "limits": {"max_samples": 10, "max_value_length": 200}
+}
+```
+
+## Record the call sequence
+
+Wrap one focused operation when you need a full call sequence:
+
+```ruby
+trace_path = Bulldogger.record do
+  run_related_test
+end
+```
+
+The result is a JSONL file with a header and one object for each call, return, or raise event.
+This excerpt came from a generated trace:
+
+```jsonl
+{"schema_version":1,"kind":"record","events":["call","return","raise"],"limits":{"max_value_length":200}}
+{"event":"call","seq":1,"depth":1,"path":"-e","line":1,"method":"ProseTrace#outer","args":{"value":{"value":"3"}}}
+{"event":"return","seq":4,"depth":1,"path":"-e","line":1,"method":"ProseTrace#outer","return":{"value":"6"}}
+{"event":"raise","seq":7,"depth":2,"path":"-e","line":1,"method":"ProseTrace#inner","exception":{"class":"ArgumentError","message":"negative"}}
+{"event":"return","seq":8,"depth":2,"path":"-e","line":1,"method":"ProseTrace#inner","raised":true}
+```
+
+The [trace schema](docs/trace-schema.md) defines the event fields and tested `jq` queries.
+
+JSONL is the primary record format.
+`Bulldogger.trace_to_sqlite(trace_path, db_path)` converts an existing trace when the `sqlite3` gem is available.
+The converter uses a soft require, so bulldogger keeps zero runtime dependencies.
+
 ## Cost
 
 `TracePoint(:raise)` observes every raised exception, including exceptions that application code rescues.
@@ -101,6 +186,20 @@ Frame capture has a small cost in this measurement, while later processing accou
 
 A green suite with no raised exception caused no measurable overhead in this test.
 A green suite can still raise and rescue exceptions, and each exception incurs the capture cost.
+
+### Explicit verb cost
+
+The proportionality harness used one app fixture for both verbs.
+It measured about 1,330 ns per targeted method call for `probe`.
+It measured about 4,500 ns per traced call for `record`.
+
+`probe` cost scales with calls to the targeted method, which the harness names M.
+`record` cost scales with all traced calls, which the harness names N.
+With M/N at 0.25, the fixture measured `probe` at 8.28x and `record` at 111.76x.
+These ratios describe this app fixture, and another app has a different M/N value.
+
+`probe` and `record` are explicit verbs for one focused run before or after a change.
+Do not apply either verb continuously to the full suite.
 
 ## Disable bulldogger
 
@@ -152,11 +251,11 @@ The evidence file marks omitted or truncated data.
 
 ## Scope of version 0.1
 
-Version 0.1 captures at `:raise` and writes JSON files.
-It has no `probe` verb, `record` verb, CLI, SQLite store, or full execution trace.
+Version 0.1 provides failure snapshots, targeted probes, and explicit full records.
+It writes JSON evidence and JSONL traces.
+The version 0.1 boundary exposes file artifacts and an offline SQLite converter.
 
-Full method tracing measured 60x to 106x the baseline.
-The [design decisions](docs/design-decisions.md) explain the capture design and its measured alternatives.
+The [design decisions](docs/design-decisions.md) explain the three approaches and their measured costs.
 
 ## License
 

@@ -79,3 +79,64 @@ The automatic behavior conflicted with the explicit integration boundary.
 
 bulldogger provides `require "bulldogger/minitest"` as the Minitest entry point.
 The require line makes capture activation visible in the test setup.
+
+## Keep complete probe counts
+
+The probe records every caller, class, and `nil` occurrence.
+Caller sampling could hide a call site and support a false claim that it did not occur.
+Count sampling could hide a later `nil` value and support the same false claim.
+We rejected both performance proposals because they would create false negative evidence.
+
+The probe serializes only the first 10 values by default.
+It continues the complete class, `nil`, and caller counts after that limit.
+This design keeps the evidence complete for the questions that probe answers.
+
+A raised method also produces a Ruby `:return` event with a `nil` value.
+The Ruby-level rescue counter identifies that raised exit.
+The evidence records `raised_exits` and excludes that event from normal return counts.
+
+## Measure the shipped event work
+
+Early estimates measured a different amount of work.
+Using those estimates would state a low probe cost and a high record cost.
+Measurement of the shipped paths corrected both directions.
+
+The common proportionality harness measured about 1,330 ns per targeted probe call.
+It measured about 4,500 ns per traced record call.
+The record-specific harness measured 40.94x for capture and 58.34x with file output.
+
+## Use proportionality as the performance rule
+
+A probe observes M calls to its named methods.
+A record observes N calls to all Ruby methods in its traced operation.
+The measured probe cost follows M, and the measured record cost follows N.
+
+A fixed cost ratio changes when the workload changes M/N.
+The proportionality rule lets a reader apply the measurement to an application call graph.
+
+## Keep JSONL as the record writer
+
+The record path writes versioned JSONL with one event on each line.
+`trace_to_sqlite` converts a finished file when the `sqlite3` gem is available.
+
+This converter keeps SQLite behind the file boundary.
+It also keeps the core at zero runtime dependencies.
+
+## Account for the coverage blind spot
+
+Ruby `Coverage` does not observe lines that run under a `TracePoint` callback.
+The suite calls the callback logic directly to test those lines.
+
+The coverage gate also keeps a line-specific ledger for callback gaps.
+The measured ledger has zero entries, and its fixed cap is zero.
+The gate fails when a new entry appears.
+
+## Limit dogfooding to the acceptance suite
+
+The acceptance suite runs under bulldogger and keeps its outer capture instance active.
+The dogfood demo produced `capture_frames` evidence with a planted local and a redacted secret.
+
+The unit setup resets the module singleton before each test.
+That reset also stops an outer dogfood instance.
+An instance API would let the subject and the test tool coexist.
+That API is planned after version 0.1.

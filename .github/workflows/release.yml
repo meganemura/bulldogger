@@ -1,0 +1,102 @@
+name: Release bulldogger
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: {}
+
+concurrency:
+  group: release-bulldogger
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # The environment is the approval gate. Publishing a gem version
+    # cannot be undone -- yanking frees nothing, because the version
+    # number stays spent -- so a human confirms before the push, and
+    # RubyGems.org matches this exact name when it authorizes the
+    # trusted publisher.
+    environment: release-bulldogger
+    permissions:
+      contents: write
+      # Trusted Publishing signs in with a short-lived OIDC token
+      # instead of a stored API key, so no long-lived credential for
+      # RubyGems.org exists in this repository to leak.
+      id-token: write
+
+    steps:
+      # A tag can be moved to another commit. Pinning the action by
+      # commit identifies the code that runs.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          # Pinned rather than "latest": this job runs the suite as the
+          # gate before a push nobody can take back, so a Ruby released
+          # this morning must not decide whether a release goes out.
+          ruby-version: "4.0.6"
+      # bundler-cache is off here for the same reason it is off in
+      # ci.yml. It sets BUNDLE_PATH=vendor/bundle, and one acceptance
+      # test builds a second bundle whose Gemfile omits debug and
+      # installs it with `bundle install --local` from an unbundled
+      # environment. That resolver reads the system gem home, so a
+      # vendored parent bundle makes it fail to find the pinned
+      # minitest. A release must not be gated by a suite that fails for
+      # a reason unrelated to the gem.
+      - run: bundle install --jobs 4
+      - name: Verify the tag version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          tag_version="${RELEASE_TAG#v}"
+          gem_version="$(bundle exec ruby -Ilib -rbulldogger/version -e 'print Bulldogger::VERSION')"
+          if [ "$tag_version" != "$gem_version" ]; then
+            echo "The tag version $tag_version does not match the gem version $gem_version." >&2
+            exit 1
+          fi
+      - name: Run the default task
+        run: bundle exec rake
+      - name: Check coverage
+        run: bundle exec rake coverage
+      - name: Configure RubyGems credentials
+        uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
+      - name: Build the gem
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          mkdir -p pkg
+          bundle exec gem build bulldogger.gemspec --output "pkg/bulldogger-${version}.gem"
+      - name: Push the gem
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          # A re-run after a partial failure must not fail on the push
+          # that already succeeded, so the one error meaning "this
+          # version is already on RubyGems.org" passes.
+          if output=$(gem push "pkg/bulldogger-${version}.gem" 2>&1); then
+            echo "$output"
+          else
+            echo "$output"
+            if ! echo "$output" | grep -q "Repushing of gem versions is not allowed"; then
+              exit 1
+            fi
+          fi
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          gem_path="pkg/bulldogger-${version}.gem"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" --clobber "$gem_path"
+          else
+            gh release create "$RELEASE_TAG" --generate-notes "$gem_path"
+          fi

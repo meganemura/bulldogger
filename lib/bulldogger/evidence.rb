@@ -8,6 +8,7 @@ module Bulldogger
   # Assembles and writes one evidence file: the exception, the test it
   # failed in, and (if the ring still has it) the snapshot captured at
   # :raise time.
+  # Capture owns runtime observation; this class only formats stored data.
   #
   # The exception's message and backtrace are read here, at report
   # time, not inside the :raise hook. Exception#backtrace can still be
@@ -45,6 +46,8 @@ module Bulldogger
     def build_payload(exception:, test:)
       snapshot = @capture.snapshot_for(exception)
       payload = {
+        # Readers can ignore the added skill key, so the compatible schema
+        # change keeps version 1.
         "schema_version" => 1,
         "tool" => { "name" => "bulldogger", "version" => Bulldogger::VERSION },
         "captured_at" => Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -53,6 +56,8 @@ module Bulldogger
         "exception" => build_exception_section(exception),
         "frames" => snapshot ? snapshot["frames"] : []
       }
+      # The failure output must lead an agent to the skill at the moment of
+      # need. The evidence path alone gives no route to those instructions.
       skill_file = Bulldogger::Skill.file
       payload["skill"] = skill_file if skill_file
       frames_omitted = snapshot ? snapshot["frames_omitted"] : 0

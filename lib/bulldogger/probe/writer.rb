@@ -7,6 +7,8 @@ module Bulldogger
   module Probe
     # Writes one probe session's aggregated MethodStats as
     # tmp/bulldogger/run-.../probe-NNN-<slug>.json.
+    # Probe collection stays outside this module; this module only formats
+    # and writes the completed statistics.
     #
     # Filenames use their own "probe-NNN-" sequence, not Run#next_path
     # (which produces plain "NNN-<slug>.json" for failure evidence):
@@ -47,6 +49,8 @@ module Bulldogger
 
       def self.payload_for(config:, targets:, stats:, started_at:)
         payload = {
+          # Readers can ignore the added skill key, so the compatible schema
+          # change keeps version 1.
           "schema_version" => 1,
           "kind" => "probe",
           "tool" => { "name" => "bulldogger", "version" => Bulldogger::VERSION },
@@ -55,6 +59,8 @@ module Bulldogger
           "methods" => targets.each_with_object({}) { |t, h| h[t.label] = stats[t.label].to_h },
           "limits" => { "max_samples" => config.max_samples, "max_value_length" => config.max_value_length }
         }
+        # Each evidence file carries a route to the instructions that explain
+        # how an agent can use it.
         skill_file = Bulldogger::Skill.file
         payload["skill"] = skill_file if skill_file
         payload

@@ -11,6 +11,7 @@ module Bulldogger
     # One recording session: a single TracePoint subscribed to
     # :call/:return/:raise/:rescue, writing :call/:return/:raise as
     # JSONL lines to one trace-NNN.jsonl file.
+    # The session captures and writes events; it does not query trace files.
     #
     # :rescue is subscribed to but never written to the file -- it
     # exists only to feed the raise-exit discriminator (see
@@ -118,12 +119,16 @@ module Bulldogger
 
       def header
         value = {
+          # Readers can ignore the added skill key, so the compatible schema
+          # change keeps version 1.
           "schema_version" => 1,
           "kind" => "record",
           "started_at" => Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
           "events" => WRITTEN_EVENTS,
           "limits" => { "max_value_length" => @config.max_value_length }
         }
+        # The trace header carries a route to the instructions that explain
+        # how an agent can use the file.
         skill_file = Bulldogger::Skill.file
         value["skill"] = skill_file if skill_file
         value

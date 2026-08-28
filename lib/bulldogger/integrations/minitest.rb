@@ -4,10 +4,14 @@ require "minitest"
 require_relative "../../bulldogger"
 
 module Bulldogger
+  # Connects Minitest lifecycle events to one selected Bulldogger instance.
+  # It does not change Minitest test isolation or exception handling.
   module Minitest
     class << self
       attr_writer :instance
 
+      # Dogfood assigns an outer observer that the suite's default reset cannot
+      # reach. Normal users keep the default instance without extra setup.
       def instance
         @instance || Bulldogger.default
       end

@@ -1,8 +1,16 @@
 # frozen_string_literal: true
 
 module Bulldogger
-  # Owns one independent capture, run, and evidence lifecycle.
-  # File schemas and serialization behavior remain in their existing classes.
+  # Owns one independent capture, run, and evidence lifecycle. One module
+  # singleton cannot serve as the reset subject and the outer observer. A
+  # separate instance lets a test suite reset the subject while the observer
+  # stays active. This class does not define file schemas or serialization.
+  #
+  # Each instance keeps its own :raise subscription. Two subscriptions fired
+  # independently in measurements, and disabling one left the other active.
+  # Each subscription cost about 0.03 microseconds per raise. A shared
+  # dispatcher would add a registry and lifecycle coordination without a
+  # measured need.
   class Instance
     attr_reader :config
 

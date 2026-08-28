@@ -12,25 +12,19 @@ require_relative "bulldogger/instance"
 # writes a structured snapshot of its own failure, so an agent can read
 # runtime values instead of guessing them from source.
 #
-# This module is a thin facade. It wires Capture (the :raise
-# subscription and its ring of pending snapshots), Run (the on-disk
-# run directory), and Evidence (assembling and writing one failure's
-# JSON) together, and holds the process-global state a test run needs
-# -- one TracePoint, one run directory. No capture, formatting, or
-# redaction logic lives here; see capture.rb, formatter.rb, and
-# redactor.rb.
+# This module is a thin facade over a default Instance. Separate instances let
+# a tool observe a suite that resets the default instance during test setup.
+# This module does not own capture, formatting, or redaction logic.
 module Bulldogger
   # Autoloaded rather than required at the top of this file, because
-  # record.rb requires this file back: Record.start reads
-  # Bulldogger.config and Bulldogger.run_dir, so `require
-  # "bulldogger/record"` on its own has to work. Requiring in both
-  # directions makes a cycle, and Ruby warns that one file will see
-  # the other half-defined. Deferring until Bulldogger::Record is first
-  # named breaks it -- by then this file has finished loading, so
-  # record.rb's require of it is a no-op.
+  # record.rb requires this file back. Requiring both files eagerly makes a
+  # cycle, and Ruby can expose a partly defined module. The first Record call
+  # occurs after this file finishes loading, so autoload avoids that cycle.
   autoload :Record, File.expand_path("bulldogger/record", __dir__)
 
   class << self
+    # Test setup can replace this default for isolation. An explicitly created
+    # Instance keeps an outer observer alive when the default is replaced.
     def default
       @default ||= Instance.new
     end

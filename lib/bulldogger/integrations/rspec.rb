@@ -4,10 +4,14 @@ require "rspec/core"
 require_relative "../../bulldogger"
 
 module Bulldogger
+  # Connects RSpec lifecycle events to one selected Bulldogger instance.
+  # It does not control RSpec execution or formatter behavior.
   module RSpec
     class << self
       attr_writer :instance
 
+      # Dogfood can assign an isolated observer. The default preserves the
+      # normal integration API for applications that need one lifecycle.
       def instance
         @instance || Bulldogger.default
       end

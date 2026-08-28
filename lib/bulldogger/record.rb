@@ -13,10 +13,8 @@ module Bulldogger
   # AGENTS.md reserves for an explicit request -- see
   # tasks/record.rake for the measured cost of turning it on.
   #
-  # This is a thin facade over Session (the TracePoint subscription
-  # and JSONL writer) and SqliteConverter (the optional, offline
-  # sqlite adapter), the same shape lib/bulldogger.rb uses for
-  # Capture/Run/Evidence.
+  # This module coordinates Session and the optional SQLite adapter. It does
+  # not own the selected instance or its failure-capture lifecycle.
   module Record
     class << self
       # Runs the block with recording on. The block runs whether or
@@ -35,10 +33,8 @@ module Bulldogger
         path
       end
 
-      # config and run_dir come from the shared Bulldogger facade
-      # (already public API), not a Record-owned copy: one process has
-      # one run directory and one kill switch, shared by failure
-      # capture, probe, and record alike.
+      # Record formerly read Bulldogger.config and Bulldogger.run_dir directly.
+      # The instance parameter selects the config and run state, as Probe does.
       def start(instance: Bulldogger.default)
         Session.new(config: instance.config, run_dir: instance.run_dir)
       end

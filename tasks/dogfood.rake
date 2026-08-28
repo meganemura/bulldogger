@@ -7,7 +7,12 @@ require "tmpdir"
 require_relative "../test/acceptance/acceptance_helper"
 
 # Runs repository suites through an outer instance and checks its evidence.
-# Product capture and integration behavior remain in lib/bulldogger.
+# This task does not implement product capture or integration behavior.
+#
+# Every Minitest::Test setup stops Bulldogger and clears its default state for
+# test isolation. That reset is correct, so dogfood assigns a separate observer.
+# Before this separation, an isolated failure used capture_frames with 20
+# frames. The same failure used missed with zero frames in the unit suite.
 module BulldoggerDogfood
   module_function
 
@@ -19,6 +24,8 @@ module BulldoggerDogfood
   end
 
   def run(root:, files:, output_dir:)
+    # The assigned instance survives resets of Bulldogger.default inside the
+    # unit suite, while the integration fallback still serves normal callers.
     require_script = <<~RUBY
       Bulldogger::Minitest.instance = Bulldogger::Instance.new
       #{files.inspect}.each { |file| require file }

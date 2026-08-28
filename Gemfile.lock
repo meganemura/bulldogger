@@ -11,6 +11,15 @@ GEM
       reline (>= 0.3.8)
     diff-lcs (1.6.2)
     erb (6.0.7)
+    ffi (1.17.4)
+    ffi (1.17.4-arm64-darwin)
+    ffi (1.17.4-x86_64-linux-gnu)
+    hegeltest (0.1.0)
+      ffi (~> 1.17, >= 1.17.4)
+    hegeltest (0.1.0-arm64-darwin)
+      ffi (~> 1.17, >= 1.17.4)
+    hegeltest (0.1.0-x86_64-linux)
+      ffi (~> 1.17, >= 1.17.4)
     io-console (0.9.2)
     irb (1.18.0)
       pp (>= 0.6.0)
@@ -53,10 +62,12 @@ GEM
 PLATFORMS
   arm64-darwin-25
   ruby
+  x86_64-linux
 
 DEPENDENCIES
   bulldogger!
   debug (= 1.11.1)
+  hegeltest (= 0.1.0)
   minitest (= 5.27.0)
   rake (= 13.4.2)
   rspec (= 3.13.2)
@@ -66,6 +77,12 @@ CHECKSUMS
   debug (1.11.1) sha256=2e0b0ac6119f2207a6f8ac7d4a73ca8eb4e440f64da0a3136c30343146e952b6
   diff-lcs (1.6.2) sha256=9ae0d2cba7d4df3075fe8cd8602a8604993efc0dfa934cff568969efb1909962
   erb (6.0.7) sha256=c5ca6dc25b0ef974a44dc8f59fe847577122483b1968a38dec305c60bf91ee92
+  ffi (1.17.4) sha256=bcd1642e06f0d16fc9e09ac6d49c3a7298b9789bcb58127302f934e437d60acf
+  ffi (1.17.4-arm64-darwin) sha256=19071aaf1419251b0a46852abf960e77330a3b334d13a4ab51d58b31a937001b
+  ffi (1.17.4-x86_64-linux-gnu) sha256=9d3db14c2eae074b382fa9c083fe95aec6e0a1451da249eab096c34002bc752d
+  hegeltest (0.1.0) sha256=c91ba80827693822d9bef2fe6bc2a55b7728254dcbb96cdb7fde85fcfad1c65b
+  hegeltest (0.1.0-arm64-darwin) sha256=d7aa4ab80c0a60889a5811656d9ffaf99ee42468e22a2b57d68574f8938ee0d8
+  hegeltest (0.1.0-x86_64-linux) sha256=14b14d8901c6ba3291c0f8b829d5dd3839944829f52018f38623368aba5fea77
   io-console (0.9.2) sha256=efa74f891dd03c0939a931dfc6e74c2813d904763d456ea9762b0525e748db08
   irb (1.18.0) sha256=de9454a0703a54704b9811a5ef31a60c86949fbf4013fcf244fabc7c775248e3
   logger (1.7.0) sha256=196edec7cc44b66cfb40f9755ce11b392f21f7967696af15d274dde7edff0203

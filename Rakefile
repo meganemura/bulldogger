@@ -7,7 +7,7 @@ Rake::TestTask.new(:test) do |t|
   t.test_files = FileList["test/unit/**/*_test.rb"]
 end
 
-task default: :test
+task default: %i[test acceptance]
 
 # Other tasks (e.g. acceptance, which runs real minitest/RSpec suites
 # as child processes) live in tasks/*.rake, owned outside this file.

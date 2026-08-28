@@ -5,6 +5,14 @@ require_relative "../../bulldogger"
 
 module Bulldogger
   module RSpec
+    class << self
+      attr_writer :instance
+
+      def instance
+        @instance || Bulldogger.default
+      end
+    end
+
     # RSpec has already scored the example's description and its
     # file/line into metadata by the time after(:each) runs; test_for
     # reads those off the Example instead of re-deriving them.
@@ -33,7 +41,7 @@ module Bulldogger
 end
 
 ::RSpec.configure do |config|
-  config.before(:suite) { Bulldogger.start }
+  config.before(:suite) { Bulldogger::RSpec.instance.start }
 
   # after(:each), not a formatter hook: example.exception is already
   # set by the time this runs (Example#run assigns it before
@@ -45,12 +53,12 @@ end
     exception = example.exception
     next unless exception
 
-    path = Bulldogger.record_failure(exception: exception, test: Bulldogger::RSpec.test_for(example))
+    path = Bulldogger::RSpec.instance.record_failure(exception: exception, test: Bulldogger::RSpec.test_for(example))
     Bulldogger::RSpec.annotate!(exception, path) if path
   end
 
   config.after(:suite) do
-    Bulldogger.finish
-    Bulldogger.stop
+    Bulldogger::RSpec.instance.finish
+    Bulldogger::RSpec.instance.stop
   end
 end

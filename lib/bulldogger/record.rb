@@ -24,8 +24,8 @@ module Bulldogger
       # see its own code execute the same way with or without
       # Bulldogger, so only the trace file -- never the block -- is
       # conditional on config.enabled.
-      def run
-        session = start
+      def run(instance: Bulldogger.default)
+        session = start(instance: instance)
         path = nil
         begin
           yield
@@ -39,8 +39,8 @@ module Bulldogger
       # (already public API), not a Record-owned copy: one process has
       # one run directory and one kill switch, shared by failure
       # capture, probe, and record alike.
-      def start
-        Session.new(config: Bulldogger.config, run_dir: Bulldogger.run_dir)
+      def start(instance: Bulldogger.default)
+        Session.new(config: instance.config, run_dir: instance.run_dir)
       end
 
       def to_sqlite(jsonl_path, db_path)

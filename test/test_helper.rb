@@ -38,9 +38,7 @@ module BulldoggerTestHelper
   # this repository's own tmp/bulldogger.
   def bulldogger_reset!
     Bulldogger.stop if Bulldogger.running?
-    %i[@config @capture @run @evidence].each do |ivar|
-      Bulldogger.instance_variable_set(ivar, nil)
-    end
+    Bulldogger.instance_variable_set(:@default, nil)
     Bulldogger.config.output_dir = Dir.mktmpdir("bulldogger-test-")
   end
 end

@@ -5,6 +5,14 @@ require_relative "../../bulldogger"
 
 module Bulldogger
   module Minitest
+    class << self
+      attr_writer :instance
+
+      def instance
+        @instance || Bulldogger.default
+      end
+    end
+
     # Minitest's own extension point: Minitest.register_plugin with a
     # Module makes Minitest call #minitest_plugin_init once, during
     # Minitest.run, at the one moment Minitest.reporter is set (the
@@ -15,11 +23,11 @@ module Bulldogger
       return if @wired
 
       @wired = true
-      Bulldogger.start
+      instance.start
       ::Minitest.reporter << Reporter.new
       ::Minitest.after_run do
-        Bulldogger.finish
-        Bulldogger.stop
+        instance.finish
+        instance.stop
       end
     end
 
@@ -35,7 +43,7 @@ module Bulldogger
         return if failure.nil? || result.skipped?
 
         exception = exception_for(failure)
-        path = Bulldogger.record_failure(exception: exception, test: test_for(result))
+        path = Minitest.instance.record_failure(exception: exception, test: test_for(result))
         annotate!(failure, path) if path
       end
 
@@ -51,8 +59,8 @@ module Bulldogger
       # re-raising the wrapper instead.
       def exception_for(failure)
         inner = failure.respond_to?(:error) ? failure.error : failure
-        return inner if Bulldogger.snapshot_for(inner)
-        return failure if Bulldogger.snapshot_for(failure)
+        return inner if Minitest.instance.snapshot_for(inner)
+        return failure if Minitest.instance.snapshot_for(failure)
 
         inner
       end

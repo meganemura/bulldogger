@@ -23,6 +23,12 @@ class FormatterTest < Minitest::Test
     assert_equal 201, entry["value"].length
   end
 
+  def test_format_self_returns_the_bare_string_without_the_entry_wrapper
+    formatter = build_formatter
+
+    assert_equal "3", formatter.format_self(3)
+  end
+
   def test_short_value_has_no_truncation_keys
     formatter = build_formatter(max_value_length: 200)
 

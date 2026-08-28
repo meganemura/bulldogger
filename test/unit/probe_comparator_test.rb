@@ -68,6 +68,25 @@ class ProbeComparatorTest < Minitest::Test
            "differences: #{result['differences'].inspect}")
   end
 
+  # A method probed only in one of the two runs (a target added, or
+  # dropped, between them) is a difference in its own right -- distinct
+  # from every other check here, which compares two methods present in
+  # both files.
+  def test_a_method_probed_in_only_one_run_is_detected_and_named
+    invoice = Billing::Invoice.new
+    path_a = Bulldogger.probe("Billing::Invoice#amount") { invoice.amount(1) }
+    path_b = Bulldogger.probe("Billing::Invoice#amount", "Billing::Invoice#recovers") do
+      invoice.amount(1)
+      invoice.recovers
+    end
+
+    result = Bulldogger.probe_compare(path_a, path_b)
+
+    refute result["identical"]
+    assert(result["differences"].any? { |d| d.include?("Billing::Invoice#recovers: only present in b") },
+           "differences: #{result['differences'].inspect}")
+  end
+
   private
 
   # Routed through one shared call site (this method), on purpose: the

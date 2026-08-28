@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "json"
+require "fileutils"
 
 class EvidenceTest < Minitest::Test
   def test_record_failure_writes_the_documented_schema
@@ -31,6 +32,75 @@ class EvidenceTest < Minitest::Test
     assert_kind_of Array, data["exception"]["backtrace"]
     assert_kind_of Array, data["frames"]
     assert_kind_of Hash, data["limits"]
+  end
+
+  def test_a_huge_exception_message_is_truncated_and_marked
+    Bulldogger.start
+
+    exception = trigger_huge_message
+    path = Bulldogger.record_failure(
+      exception: exception,
+      test: { framework: "minitest", id: "x", file: "f.rb", line: 1 }
+    )
+    data = JSON.parse(File.read(path))
+
+    limit = Bulldogger.config.max_value_length * 5
+    assert_equal true, data["exception"]["message_truncated"]
+    assert_equal 6000, data["exception"]["message_original_length"]
+    assert_equal limit + 1, data["exception"]["message"].length # +1 for the trailing "…"
+  end
+
+  # exception.class practically never raises for a real exception, but
+  # a class whose own singleton #name does is exactly the case
+  # exception_class_name's `rescue Exception` guards against -- the
+  # same "never let a hostile object break capture" rule Formatter's
+  # own safe_class_name follows.
+  def test_an_exception_class_with_a_broken_name_falls_back_to_object
+    Bulldogger.start
+
+    exception = trigger_broken_class_name
+    path = Bulldogger.record_failure(
+      exception: exception,
+      test: { framework: "minitest", id: "x", file: "f.rb", line: 1 }
+    )
+    data = JSON.parse(File.read(path))
+
+    assert_equal "Object", data["exception"]["class"]
+  end
+
+  def test_record_failure_for_an_evicted_exception_names_the_reason_evicted
+    Bulldogger.config.max_pending = 1
+    Bulldogger.start
+
+    evicted_exception = trigger_raise
+    trigger_raise # pushes the first exception out of the ring
+
+    path = Bulldogger.record_failure(
+      exception: evicted_exception,
+      test: { framework: "minitest", id: "x", file: "f.rb", line: 1 }
+    )
+    data = JSON.parse(File.read(path))
+
+    assert_equal "missed", data["capture_mode"]
+    assert_equal "evicted", data["frames_unavailable_reason"]
+  end
+
+  # Distinct from both "capture_disabled" (the tool never subscribed)
+  # and "evicted" (it subscribed, captured, then the ring outgrew it):
+  # this exception was simply never raised while capture was running,
+  # so it never entered the ring at all.
+  def test_record_failure_for_a_never_raised_exception_names_the_reason_not_captured
+    Bulldogger.start
+    never_raised = RuntimeError.new("built but never raised")
+
+    path = Bulldogger.record_failure(
+      exception: never_raised,
+      test: { framework: "minitest", id: "x", file: "f.rb", line: 1 }
+    )
+    data = JSON.parse(File.read(path))
+
+    assert_equal "missed", data["capture_mode"]
+    assert_equal "not_captured", data["frames_unavailable_reason"]
   end
 
   def test_record_failure_without_a_snapshot_is_marked_missed
@@ -121,11 +191,54 @@ class EvidenceTest < Minitest::Test
     assert_equal run_dir, File.readlink(latest)
   end
 
+  # Forces File.symlink itself to fail (a permission error, one of the
+  # SystemCallError subclasses the rescue names) by making the parent
+  # directory read-only, rather than the "name already taken" case the
+  # File.delete guard above it already handles. index.json is still
+  # the source of truth, so finish must still succeed -- only "latest"
+  # is allowed to go missing.
+  def test_a_symlink_that_cannot_be_created_leaves_index_json_intact
+    Bulldogger.start
+    output_dir = Bulldogger.config.output_dir
+    FileUtils.mkdir_p(output_dir)
+
+    Bulldogger.record_failure(exception: trigger_raise, test: { framework: "minitest", id: "x", file: "f.rb", line: 1 })
+    run_dir = Bulldogger.run_dir
+
+    File.chmod(0o500, output_dir)
+    begin
+      Bulldogger.finish
+    ensure
+      File.chmod(0o755, output_dir)
+    end
+
+    assert File.exist?(File.join(run_dir, "index.json"))
+    refute File.symlink?(File.join(output_dir, "latest"))
+  end
+
   private
 
   def trigger_raise
     raise "boom"
   rescue RuntimeError => e
+    e
+  end
+
+  def trigger_huge_message
+    raise "a" * 6000
+  rescue RuntimeError => e
+    e
+  end
+
+  class BrokenClassName < StandardError
+    def self.name
+      raise "no name for you"
+    end
+  end
+
+  def trigger_broken_class_name
+    raise BrokenClassName, "boom"
+  rescue BrokenClassName => e
     e
   end
 end

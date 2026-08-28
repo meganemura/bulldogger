@@ -19,10 +19,29 @@ class ConfigTest < Minitest::Test
     end
   end
 
+  def test_bulldogger_frame_source_env_var_selects_capture_frames
+    with_env("BULLDOGGER_FRAME_SOURCE" => "capture_frames") do
+      assert_equal :capture_frames, Bulldogger::Config.new.frame_source
+    end
+  end
+
+  def test_bulldogger_frame_source_env_var_selects_degraded
+    with_env("BULLDOGGER_FRAME_SOURCE" => "degraded") do
+      assert_equal :degraded, Bulldogger::Config.new.frame_source
+    end
+  end
+
   def test_enabled_by_default_with_neither_env_var_set
     with_env("BULLDOGGER_DISABLE" => nil, "BULLDOGGER_DISABLED" => nil) do
       assert_equal true, Bulldogger::Config.new.enabled
     end
+  end
+
+  def test_bulldogger_configure_yields_the_shared_config_and_returns_bulldogger
+    result = Bulldogger.configure { |c| c.max_frames = 3 }
+
+    assert_equal 3, Bulldogger.config.max_frames
+    assert_equal Bulldogger, result
   end
 
   private

@@ -25,6 +25,21 @@ class RecordSqliteTest < Minitest::Test
     assert_match(/LoadError/, err)
   end
 
+  # Bulldogger::Record.to_sqlite is the public facade over
+  # SqliteConverter.convert; the tests above exercise the converter
+  # directly, so this is the one place the delegation itself runs.
+  def test_record_to_sqlite_delegates_to_the_converter
+    jsonl_path = write_sample_jsonl
+    db_path = File.join(File.dirname(jsonl_path), "trace.db")
+
+    with_fake_sqlite3 do
+      result = Bulldogger::Record.to_sqlite(jsonl_path, db_path)
+
+      assert_equal db_path, result
+      assert File.exist?(db_path)
+    end
+  end
+
   def test_creates_one_row_per_event_line_matching_the_jsonl_count
     jsonl_path = write_sample_jsonl
     db_path = File.join(File.dirname(jsonl_path), "trace.db")
@@ -53,11 +68,18 @@ class RecordSqliteTest < Minitest::Test
     qty
   end
 
+  # $LOADED_FEATURES, not just the SQLite3 constant, must be undone:
+  # `require` is a no-op on a path it has already loaded, so a second
+  # test using this same helper would see its own `require "sqlite3"`
+  # silently skip re-running fake_sqlite3/sqlite3.rb and find no
+  # SQLite3 constant at all -- the earlier test's own teardown already
+  # removed it.
   def with_fake_sqlite3
     $LOAD_PATH.unshift(FAKE_SQLITE3_LIB)
     yield
   ensure
     $LOAD_PATH.delete(FAKE_SQLITE3_LIB)
+    $LOADED_FEATURES.delete(File.join(FAKE_SQLITE3_LIB, "sqlite3.rb"))
     Object.send(:remove_const, :SQLite3) if Object.const_defined?(:SQLite3)
   end
 end

@@ -5,6 +5,7 @@ $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "bulldogger"
 require "minitest/autorun"
 require "tmpdir"
+require "hegel"
 
 module BulldoggerTestHelper
   # Bulldogger memoizes one Config/Capture/Run/Evidence per process.
@@ -24,6 +25,7 @@ end
 module Minitest
   class Test
     include BulldoggerTestHelper
+    include Hegel::Syntax::Methods
 
     def setup
       bulldogger_reset!

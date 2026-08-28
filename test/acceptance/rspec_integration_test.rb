@@ -8,6 +8,7 @@ class RSpecIntegrationTest < Minitest::Test
 
   RED_FIXTURE = File.join(BulldoggerAcceptanceHelper::ROOT, "test/fixtures/rspec_red/red_spec.rb")
   GREEN_FIXTURE = File.join(BulldoggerAcceptanceHelper::ROOT, "test/fixtures/rspec_green/green_spec.rb")
+  FROZEN_FIXTURE = File.join(BulldoggerAcceptanceHelper::ROOT, "test/fixtures/rspec_red/frozen_failure_spec.rb")
 
   def test_red_suite_writes_evidence_for_both_kinds_of_failure
     stdout, _stderr, status, output_dir = run_fixture("rspec", RED_FIXTURE)
@@ -38,6 +39,22 @@ class RSpecIntegrationTest < Minitest::Test
     run_dir = run_dir_for(output_dir)
     refute_nil run_dir, "no run-* directory under #{output_dir}"
     assert File.exist?(File.join(run_dir, "index.json"))
+  end
+
+  # Mirrors MinitestIntegrationTest's own frozen-fallback check: a
+  # regular red-suite failure never reaches the fallback branch (a
+  # `raise` or a failed `expect` builds a fresh, unfrozen exception),
+  # so exercising it needs its own fixture that raises an
+  # already-frozen exception directly.
+  def test_frozen_failure_falls_back_to_a_printed_stdout_line
+    stdout, _stderr, status, output_dir = run_fixture("rspec", FROZEN_FIXTURE)
+
+    refute status.success?, "the frozen fixture is expected to fail"
+
+    paths = evidence_paths_from_stdout(stdout)
+    assert_equal 1, paths.size, "in stdout:\n#{stdout}"
+    assert File.exist?(paths.first)
+    refute_nil evidence_for(output_dir, "raises an already-frozen exception")
   end
 
   def test_green_suite_creates_no_run_directory

@@ -18,6 +18,17 @@ class ProbeValidationTest < Minitest::Test
     assert_includes error.message, "Billing::Invoice#nope"
   end
 
+  def test_a_target_string_with_neither_hash_nor_dot_fails_with_the_expected_shape
+    error = assert_raises(ArgumentError) { Bulldogger.probe_start("not_a_target") }
+    assert_includes error.message, "not_a_target"
+    assert_includes error.message, "Klass#method"
+  end
+
+  def test_unknown_constant_fails_with_the_constant_name_in_the_message
+    error = assert_raises(NameError) { Bulldogger.probe_start("NoSuchModule::Nested#amount") }
+    assert_includes error.message, "NoSuchModule::Nested"
+  end
+
   def test_c_implemented_method_fails_with_the_target_name_in_the_message
     error = assert_raises(ArgumentError) { Bulldogger.probe_start("Array#push") }
     assert_includes error.message, "Array#push"

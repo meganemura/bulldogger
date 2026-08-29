@@ -20,9 +20,11 @@ Run `bulldogger skill path` to print its installed directory.
 Read [failure evidence](references/failure-evidence.md) for snapshot modes, frames, limits, and missing values.
 Read [probe evidence](references/probe.md) for method shapes, raised exits, samples, and comparisons.
 Read [record traces](references/record.md) for JSONL events, limits, and queries.
+Read [replay traces](references/replay.md) when a failure's frames hold no application code and you need the value's origin.
 
 `probe` and `record` are explicit, expensive verbs for one focused run.
-The environment disable switches stop all three approaches.
+Replay runs automatically after a failure, once by default, in a child process.
+The environment disable switches stop all three approaches, and they stop replay too.
 
 ## Check the TracePoint visibility limit
 
@@ -38,8 +40,8 @@ Use direct or property tests to verify behavior after a change.
 
 ## Start from a failure
 
-1. Find the `bulldogger evidence:` line in the test output.
-2. Open the absolute JSON path from that line.
+1. Find the `bulldogger evidence:` line in the test output, and the `bulldogger replay:` line beside it when replay ran.
+2. Open the absolute JSON path from the evidence line.
 3. Read `capture_mode` before you inspect `frames`.
 
 If the output is unavailable, inspect `tmp/bulldogger/latest/index.json`.
@@ -49,3 +51,4 @@ Either switch prevents file output, so no `frames_unavailable_reason` exists.
 
 Read `capture_mode` before you infer what the file can show.
 Then follow the failure reference.
+When the frames hold only the test framework and the test body, follow the replay reference instead.

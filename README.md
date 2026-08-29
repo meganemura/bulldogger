@@ -83,7 +83,7 @@ This separation lets an outer observer remain active while test setup replaces t
 
 bulldogger provides three ways to collect runtime evidence:
 
-- A failure snapshot is the default. Green tests do not capture data when they raise no exception.
+- A failure snapshot is the default. Green tests do not capture data when they raise no exception. On a failure, bulldogger also replays the test once under full recording, so a value returned before the failure still reaches the evidence.
 - `probe` watches named methods during one explicit run.
 - `record` traces all Ruby method calls during one explicit run.
 
@@ -100,30 +100,54 @@ bundle exec ruby -Ilib test/fixtures/minitest_red/red_test.rb
 ```
 
 ```text
-  2) Error:
+  1) Error:
 RedTest#test_deep_raise:
 ArgumentError: expected 3 to equal the sum of [1, 2, 3]
     test/fixtures/minitest_red/app.rb:9:in 'Order.total'
     test/fixtures/minitest_red/red_test.rb:20:in 'RedTest#test_deep_raise'
-bulldogger evidence: /home/you/project/tmp/bulldogger/run-20260828-173512-6178/002-RedTest-test_deep_raise.json
+bulldogger evidence: /home/you/project/tmp/bulldogger/run-20260829-100406-58231/001-RedTest-test_deep_raise.json
+bulldogger replay: /home/you/project/tmp/bulldogger/run-20260829-100406-58231/trace-001.jsonl
 ```
 
 Open the path after `bulldogger evidence:`.
 The file contains one failure and its captured runtime values.
+The `bulldogger replay:` line appears when replay ran for that failure. Read [Replay a failing test](#replay-a-failing-test) for the settings and the side effect.
 
 Each run uses this layout:
 
 ```text
 tmp/bulldogger/
-  latest -> run-20260828-173512-6178
-  run-20260828-173512-6178/
-    001-RedTest-test_assertion_failure.json
-    002-RedTest-test_deep_raise.json
+  latest -> run-20260829-100406-58231
+  run-20260829-100406-58231/
+    001-RedTest-test_deep_raise.json
+    002-RedTest-test_assertion_failure.json
+    trace-001.jsonl
     index.json
 ```
 
 The [`bulldogger` skill](skills/bulldogger/SKILL.md) tells an agent how to inspect these files.
 The [evidence schema](docs/evidence-schema.md) defines every field and capture mode.
+
+## Replay a failing test
+
+An assertion raises after the code under test already returned. The failure snapshot then holds the test framework and the test body, and no application frames. More frames do not help. The call that produced the wrong value already left the stack.
+
+bulldogger reruns that one failing test under full recording to reach the value. Replay runs in a child process, so the parent suite's result stays unchanged. A green run replays nothing, so the zero-cost-when-green property still holds. The added cost applies only after a failure, once by default, in an isolated process.
+
+Evidence gains a `replay` key with the absolute path to the trace. It also gains a `replay_reproduced` key. This key is `true` when the child failed the same way, and `false` when the child passed. A `false` value means the failure did not reproduce alone. This usually points to a test that depends on run order or on state shared with another test.
+
+Replay settings:
+
+| Attribute | Default | Effect |
+|---|---|---|
+| `replay_on_failure` | `true` | Reruns a failing test under full recording. |
+| `max_replays` | `1` | Caps the number of replays for one run. |
+| `replay_timeout` | `60` | Seconds before bulldogger cancels the replay child. A cancelled replay writes no `replay` or `replay_reproduced` key. |
+
+Replay runs the failing test a second time. A test with a side effect performs that effect twice: a file write, an external request, or a sandbox account change. Set `BULLDOGGER_REPLAY=0` to turn off replay for one process. Set `config.replay_on_failure = false` to turn it off for the application. `BULLDOGGER_MAX_REPLAYS` overrides the cap. `BULLDOGGER_DISABLE=1` turns off replay along with every other capture.
+
+The [replay reference](skills/bulldogger/references/replay.md) tells an agent how to narrow a trace to the value's origin.
+The [trace schema](docs/trace-schema.md) defines the event fields a replay trace holds.
 
 ## Target a method with probe
 
@@ -250,6 +274,7 @@ Set `BULLDOGGER_DISABLE=1` to disable capture and output for one test process.
 
 With either switch, startup returns before the `TracePoint(:raise)` subscription.
 It writes no evidence, creates no run directory, and adds no evidence line to a failure.
+Replay does not run either, because replay starts from the evidence step that this switch skips.
 The test exit code and failure count stay unchanged.
 Acceptance tests confirm this behavior for Minitest and RSpec.
 
@@ -265,6 +290,8 @@ These environment variables configure a child test process:
 | `BULLDOGGER_DISABLED` | `1` | Alias for `BULLDOGGER_DISABLE`. |
 | `BULLDOGGER_OUTPUT_DIR` | A nonempty path | The default is `tmp/bulldogger`, relative to the working directory. |
 | `BULLDOGGER_FRAME_SOURCE` | `capture_frames` or `degraded` | The default is automatic selection. |
+| `BULLDOGGER_REPLAY` | `0` | Replay is enabled by default. `0` disables replay for one process. |
+| `BULLDOGGER_MAX_REPLAYS` | An integer | Overrides `max_replays`, the number of replays for one run. The default is `1`. |
 
 ## Secrets and limits
 

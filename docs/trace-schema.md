@@ -3,6 +3,10 @@
 `Bulldogger.record` writes a JSONL file named `trace-NNN.jsonl`.
 The first line is a header, and each later line is one event.
 
+Replay writes a trace with this same schema, from its own child process.
+The evidence file's `replay` key names that trace's absolute path.
+See [`docs/evidence-schema.md`](evidence-schema.md#replay-evidence) for the evidence keys, and the [replay reference](../skills/bulldogger/references/replay.md) for reading the trace toward the value's origin.
+
 ## Header
 
 This header came from a generated trace:

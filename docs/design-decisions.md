@@ -190,3 +190,49 @@ The proportionality law held in both measured directions.
 At M/N of 0.25, the publication point measured probe at 9.07x and record at 103.72x.
 These values describe the fixture call graph.
 The performance rule remains a proportionality based on M and N.
+
+## Replay a failure to reach a value already returned
+
+A measurement traced a failing assertion whose application code had already returned before the assertion raised.
+The failure snapshot held 20 frames: the test framework and the test body, and no application code.
+More frames do not help this case. The call that produced the wrong value had already left the stack when Ruby raised.
+
+A rerun of the same failing test, under full recording, found the value.
+The recorded trace held the call and the return of the method that produced it, several thousand events into the same test run.
+
+bulldogger reruns a failing test automatically, under full recording, once by default.
+The `replay` evidence key names the resulting trace.
+
+## Run replay in a child process
+
+Full recording subscribes to every call and return. An early design that ran this continuously, inside the parent process, measured 60x to 106x the baseline.
+Replay inside the parent test process would apply that same continuous cost to every green run.
+It would also let a re-run test change state that a later test depends on.
+
+bulldogger runs replay as a separate `ruby` process instead. The child inherits the environment and a filtered copy of the parent's `$LOAD_PATH`.
+It does not inherit the parent's live objects or its running state.
+A crash, a timeout, or a wrong exit status in the child does not change the parent suite's exit code or failure count.
+
+This design keeps the zero-cost-when-green property. Replay adds cost only after a failure, once by default, bounded to the one process that investigates it.
+
+## Keep replay on by default, and state its side effect beside the switch
+
+Replay exists to find a value that a snapshot alone cannot reach, so the default enables it.
+Replay also runs the failing test a second time. A test with a side effect performs that effect twice: a file write, an external request, or a sandbox account change.
+
+The side effect applies only after a failure, never on a green run.
+The default stays on because the value replay finds outweighs that cost for most suites.
+Any application can turn replay off: `BULLDOGGER_REPLAY=0` for one process, or `config.replay_on_failure = false` for the application.
+`BULLDOGGER_DISABLE=1` turns off replay along with every other capture.
+
+## Verify a replay trace by its content
+
+An early acceptance check asserted only that the evidence held a `replay` key.
+A replay child that could not load the application code still wrote a trace.
+The trace held only interpreter and framework boot events.
+It carried no line of application code.
+The evidence file still carried the `replay` key.
+That version passed the existing suite.
+
+The acceptance suite now reads the named trace and asserts that a chosen application method's own call and return appear in it, by name.
+A trace that holds no application events fails that assertion, even when the `replay` key is present.

@@ -23,6 +23,10 @@ Frame 0 is the raise site.
 For assertion failures, framework assertion code can occupy the first frames.
 A generated Minitest failure placed the test method at index 2.
 
+The frames can hold no application code at all.
+An assertion raises after the code under test already returned, so a value produced by that code left no frame on the stack.
+When the frames stop at the test framework and the test body, read [replay traces](replay.md) for the value's origin.
+
 List the frame labels and paths:
 
 ```sh

@@ -18,6 +18,12 @@ The run directory also contains `index.json`, which lists the failure files.
 | `frames_unavailable_reason` | String | in missed mode | Reason for an empty frame list. |
 | `limits` | Object | always | Limits used for this capture. |
 | `skill` | String | when available | Absolute path to the installed `SKILL.md`. |
+| `replay` | String | when replay wrote a trace file | Absolute path to the replay trace. |
+| `replay_reproduced` | Boolean | when replay ran to completion | `true` when the replayed test failed the same way, `false` when it passed. |
+
+Both replay fields are absent when replay did not run. Causes: capture disabled, replay itself turned off, the framework unsupported, `max_replays` already reached, or the replay child timed out.
+`replay_reproduced` can be present with no `replay` field, when the child ran but wrote no trace file.
+Read [Replay evidence](#replay-evidence) for an example and where to read the trace.
 
 ## Test fields
 
@@ -255,6 +261,32 @@ An Array or Hash uses a trailing `…` to mark elements after the first 10.
 
 Each failure path is relative to the run directory.
 The `latest` symlink points to the last finished run when the filesystem supports symlinks.
+
+## Replay evidence
+
+Replay reruns one failing test under full recording, in a child process, and adds the `replay` and `replay_reproduced` keys to that test's evidence file.
+`replay` names the absolute path to the trace, written into the same run directory as the evidence file.
+
+This excerpt came from a generated Minitest failure, with the replay keys the file also carries:
+
+```json
+{
+  "schema_version": 1,
+  "capture_mode": "capture_frames",
+  "test": {
+    "framework": "minitest",
+    "id": "RedTest#test_deep_raise",
+    "file": "test/fixtures/minitest_red/red_test.rb",
+    "line": 19
+  },
+  "replay": "/home/you/project/tmp/bulldogger/run-20260829-100406-58231/trace-001.jsonl",
+  "replay_reproduced": true
+}
+```
+
+Replay defaults to on, replays one failing test for each run, and cancels a replay child that runs past 60 seconds.
+See the [README](../README.md#replay-a-failing-test) for the settings, the switches that turn replay off, and the side effect a second run of a test can cause.
+Read the [replay reference](../skills/bulldogger/references/replay.md) for narrowing a trace to the value's origin.
 
 ## Probe evidence
 

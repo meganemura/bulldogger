@@ -105,14 +105,14 @@ RedTest#test_deep_raise:
 ArgumentError: expected 3 to equal the sum of [1, 2, 3]
     test/fixtures/minitest_red/app.rb:9:in 'Order.total'
     test/fixtures/minitest_red/red_test.rb:20:in 'RedTest#test_deep_raise'
-bulldogger evidence: /home/you/project/tmp/bulldogger/run-20260829-100406-58231/001-RedTest-test_deep_raise.json
+bulldogger evidence: /home/you/project/tmp/bulldogger/run-20260829-100406-58231/001-RedTest-test_deep_raise.json (raising method is in these frames)
 ```
 
-Open the path after `bulldogger evidence:`.
+Open the path on the line with the parenthetical guidance.
 The file contains one failure and its captured runtime values.
 The evidence file has `replay_skipped_reason: "application_frame_available"` for this propagated exception. Its `Order.total` frame contains the application locals, so replay did not run.
 
-The `bulldogger replay:` line appears when replay runs for a failure. Read [Replay a failing test](#replay-a-failing-test) for the rule, settings, and side effect.
+The `bulldogger replay:` line appears when replay runs for a failure. Its parenthetical identifies a reproduced failure or a passing replay. Read [Replay a failing test](#replay-a-failing-test) for the rule, settings, and side effect.
 
 Each run uses this layout:
 
@@ -140,6 +140,18 @@ The default rule counts application frames outside the test file. Zero such fram
 Replay runs in a child process, so the parent suite's result stays unchanged. A green run replays nothing, so the zero-cost-when-green property still holds. The added cost applies only after an assertion-shaped failure, once by default, in an isolated process.
 
 Evidence gains a `replay` key with the absolute path to the trace. It also gains a `replay_reproduced` key. This key is `true` when the child failed the same way, and `false` when the child passed. A `false` value means the failure did not reproduce alone. This usually points to a test that depends on run order or on state shared with another test.
+
+Failure output marks the file that contains the useful runtime data:
+
+```text
+bulldogger evidence: /abs/path/evidence.json
+bulldogger replay: /abs/path/trace.jsonl (value was produced before the assertion raised)
+```
+
+A passing replay uses `(test passed alone; this trace shows the passing run)`.
+When replay cannot run, the evidence line says that its frames do not show where the value came from.
+When replay is off, the evidence parenthetical also names `BULLDOGGER_REPLAY=1`.
+A missed capture says that the snapshot holds no frames.
 
 Replay settings:
 

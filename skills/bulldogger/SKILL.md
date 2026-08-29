@@ -41,9 +41,9 @@ Use direct or property tests to verify behavior after a change.
 
 ## Start from a failure
 
-1. Find the `bulldogger evidence:` line in the test output, and the `bulldogger replay:` line beside it when replay ran.
-2. Open the absolute JSON path from the evidence line.
-3. Read `capture_mode` before you inspect `frames`.
+1. Find the output line with parenthetical guidance.
+2. Open the absolute path from that line.
+3. Read `capture_mode` before you inspect evidence frames.
 
 If the output is unavailable, inspect `tmp/bulldogger/latest/index.json`.
 Each `failures[].path` value is relative to the run directory.
@@ -52,8 +52,7 @@ Either switch prevents file output, so no `frames_unavailable_reason` exists.
 
 Read `capture_mode` before you infer what the file can show.
 Then follow the failure reference.
-Use the frames when an exception propagated from an application method. The raising method and its locals remain in the snapshot. The evidence has no `replay` key and records `replay_skipped_reason: "application_frame_available"`.
+The output parenthetical selects the evidence snapshot or the replay trace.
+Check `replay_reproduced` before you interpret a replay trace as a failing run.
 
-Follow the replay reference when an assertion left only the test framework and the test body in the frames. The producing method returned before the assertion raised, so its calls and returns appear in the replay trace.
-
-A missing `replay` key with a recorded skip reason means the frames already answer the question. Do not search for a trace that bulldogger deliberately did not make.
+A missing `replay` key with `replay_skipped_reason: "application_frame_available"` means the frames contain the raising method. Do not search for a replay trace in this case.

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require "minitest"
-require "json"
 require_relative "../../bulldogger"
+require_relative "../failure_output"
 
 module Bulldogger
   # Connects Minitest failures to evidence and replay paths.
@@ -55,7 +55,7 @@ module Bulldogger
 
         exception = exception_for(failure)
         path = Minitest.instance.record_failure(exception: exception, test: test_for(result))
-        annotate!(failure, path, replay_path(path)) if path
+        annotate!(failure, path) if path
       end
 
       private
@@ -93,20 +93,13 @@ module Bulldogger
       # and #define_singleton_method on a frozen object raises --
       # fall back to printing the line ourselves so a frozen exception
       # never means a silently missing evidence line.
-      def replay_path(path)
-        JSON.parse(File.read(path))["replay"]
-      rescue JSON::ParserError, SystemCallError
-        nil
-      end
-
-      def annotate!(failure, path, replay_path)
+      def annotate!(failure, path)
         original = failure.message
-        suffix = "\nbulldogger evidence: #{path}"
-        suffix += "\nbulldogger replay: #{replay_path}" if replay_path
+        lines = FailureOutput.lines(path, replay_enabled: Minitest.instance.config.replay_on_failure)
+        suffix = "\n#{lines.join("\n")}"
         failure.define_singleton_method(:message) { "#{original}#{suffix}" }
       rescue FrozenError
-        $stdout.puts "bulldogger evidence: #{path}"
-        $stdout.puts "bulldogger replay: #{replay_path}" if replay_path
+        $stdout.puts lines
       end
     end
   end

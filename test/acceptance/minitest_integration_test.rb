@@ -12,12 +12,13 @@ class MinitestIntegrationTest < Minitest::Test
   FLAKY_FIXTURE = File.join(BulldoggerAcceptanceHelper::ROOT, "test/fixtures/minitest_red/flaky_test.rb")
 
   def test_replay_that_passes_records_the_non_reproduction
-    _stdout, _stderr, status, output_dir = run_fixture("ruby", FLAKY_FIXTURE)
+    stdout, _stderr, status, output_dir = run_fixture("ruby", FLAKY_FIXTURE)
 
     refute status.success?
     evidence = evidence_for(output_dir, "test_passes_only_during_replay")
     assert_equal false, evidence["replay_reproduced"]
     assert File.file?(evidence["replay"])
+    assert_includes stdout, "bulldogger replay: #{evidence["replay"]} (test passed alone; this trace shows the passing run)"
   end
 
   def test_replay_switch_preserves_the_failure_result_and_writes_no_trace
@@ -28,6 +29,9 @@ class MinitestIntegrationTest < Minitest::Test
     assert_equal summary_counts(baseline_stdout), summary_counts(stdout)
     assert_empty Dir.glob(File.join(output_dir, "run-*", "trace-*.jsonl"))
     assert_empty replay_paths_from_stdout(stdout)
+    evidence_for(output_dir, "test_assertion_failure").then do |evidence|
+      assert_includes stdout, "bulldogger evidence: #{evidence_path_for(output_dir, evidence)} (frames do not show where the value came from; set BULLDOGGER_REPLAY=1)"
+    end
   end
 
   def test_red_suite_writes_evidence_for_both_kinds_of_failure
@@ -59,6 +63,8 @@ class MinitestIntegrationTest < Minitest::Test
     assert fixture_events.any? { |event| event["event"] == "return" }
     assert_equal "application_frame_available", deep_raise["replay_skipped_reason"]
     refute deep_raise.key?("replay")
+    assert_includes stdout, "bulldogger evidence: #{evidence_path_for(output_dir, deep_raise)} (raising method is in these frames)"
+    assert_includes stdout, "bulldogger replay: #{assertion_failure["replay"]} (value was produced before the assertion raised)"
 
     # Evidence is written per-failure, independent of suite end; this
     # is the check that Bulldogger.finish (index.json) and stop both
@@ -107,7 +113,9 @@ class MinitestIntegrationTest < Minitest::Test
     paths = evidence_paths_from_stdout(stdout)
     assert_equal 1, paths.size, "in stdout:\n#{stdout}"
     assert File.exist?(paths.first)
-    refute_nil evidence_for(output_dir, "test_frozen_assertion_failure")
+    evidence = evidence_for(output_dir, "test_frozen_assertion_failure")
+    refute_nil evidence
+    assert_includes stdout, "bulldogger replay: #{evidence["replay"]} (value was produced before the assertion raised)"
   end
 
   def test_green_suite_creates_no_run_directory

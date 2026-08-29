@@ -24,6 +24,11 @@ The run directory also contains `index.json`, which lists the failure files.
 
 The `replay` key is absent when replay did not run. A `replay_skipped_reason` value distinguishes a deliberate skip because the frames already answer the question. Other causes include disabled replay, an unsupported framework, an exhausted `max_replays` limit, or a replay child timeout.
 `replay_reproduced` can be present with no `replay` field, when the child ran but wrote no trace file.
+
+The failure output keeps stable `bulldogger evidence:` and `bulldogger replay:` prefixes.
+A parenthetical marks the file that contains the useful runtime data.
+The evidence line identifies available raising frames, missing origin frames, or a snapshot with no frames.
+The replay line identifies a reproduced failure or a passing isolated run.
 Read [Replay evidence](#replay-evidence) for an example and where to read the trace.
 
 ## Test fields

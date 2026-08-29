@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require "rspec/core"
-require "json"
 require_relative "../../bulldogger"
+require_relative "../failure_output"
 
 module Bulldogger
   # Connects RSpec failures to evidence and replay paths.
@@ -38,15 +38,11 @@ module Bulldogger
     # silently missing evidence line.
     def self.annotate!(exception, path)
       original = exception.message
-      replay_path = JSON.parse(File.read(path))["replay"]
-      suffix = "\nbulldogger evidence: #{path}"
-      suffix += "\nbulldogger replay: #{replay_path}" if replay_path
+      lines = FailureOutput.lines(path, replay_enabled: instance.config.replay_on_failure)
+      suffix = "\n#{lines.join("\n")}"
       exception.define_singleton_method(:message) { "#{original}#{suffix}" }
     rescue FrozenError
-      $stdout.puts "bulldogger evidence: #{path}"
-      $stdout.puts "bulldogger replay: #{replay_path}" if replay_path
-    rescue JSON::ParserError, SystemCallError
-      exception.define_singleton_method(:message) { "#{original}\nbulldogger evidence: #{path}" }
+      $stdout.puts lines
     end
   end
 end

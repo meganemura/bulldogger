@@ -48,6 +48,10 @@ module BulldoggerAcceptanceHelper
     evidence_records(output_dir).find { |data| data.dig("test", "id")&.include?(id_fragment) }
   end
 
+  def evidence_path_for(output_dir, evidence)
+    evidence_files(output_dir).find { |path| JSON.parse(File.read(path)) == evidence }
+  end
+
   def evidence_paths_from_stdout(text)
     text.scan(EVIDENCE_LINE).flatten
   end

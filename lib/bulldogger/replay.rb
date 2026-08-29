@@ -3,6 +3,7 @@
 require "open3"
 require "rbconfig"
 require "timeout"
+require_relative "application_frames"
 
 module Bulldogger
   # Records one failed test again because a failure snapshot can miss the cause.
@@ -20,7 +21,7 @@ module Bulldogger
 
     def call(test:, run_dir:, frames: [])
       return unless eligible?(test)
-      if @config.replay_on_failure != :always && application_frame_available?(test, frames: frames)
+      if @config.replay_on_failure != :always && ApplicationFrames.available?(test[:file], frames)
         return { skipped_reason: "application_frame_available" }
       end
       return unless reserve
@@ -55,29 +56,6 @@ module Bulldogger
     end
 
     private
-
-    def application_frame_available?(test, frames:)
-      test_path = File.expand_path(test[:file])
-      frames.any? do |frame|
-        raw_path = frame["path"].to_s
-        next false if raw_path.empty?
-
-        path = File.expand_path(raw_path)
-        path != test_path && !library_path?(path)
-      end
-    end
-
-    def library_path?(path)
-      library_paths.any? { |prefix| path.start_with?(prefix) }
-    end
-
-    def library_paths
-      # A vendored bundle can sit inside the project. Gem.path still names it,
-      # so project-directory classification alone would replay this case.
-      # Checking only frame zero was rejected because a gem can raise while an
-      # application caller remains on the stack with the values a reader needs.
-      Gem.path + RbConfig::CONFIG.values_at("rubylibdir", "sitelibdir").compact
-    end
 
     def eligible?(test)
       @config.enabled && @config.replay_on_failure && ENV["BULLDOGGER_REPLAY_CHILD"] != "1" &&

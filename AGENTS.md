@@ -16,6 +16,13 @@ with bare hands.
 This repository is written to be published. English everywhere:
 README, docs, comments, commit messages.
 
+`README.ja.md` is the one exception, and it is a translation rather than a
+second source. `README.md` holds the claims, and every measured number
+belongs there first. A change to `README.md` is finished when the
+translation carries it too, because a translation that drifts states
+something the project does not, and a reader who trusts it has no way to
+tell.
+
 ## Design principles (settled; change only with the owner)
 
 - The default capture is the failure snapshot. It costs nothing while

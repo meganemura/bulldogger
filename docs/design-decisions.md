@@ -200,8 +200,18 @@ More frames do not help this case. The call that produced the wrong value had al
 A rerun of the same failing test, under full recording, found the value.
 The recorded trace held the call and the return of the method that produced it, several thousand events into the same test run.
 
-bulldogger reruns a failing test automatically, under full recording, once by default.
+bulldogger reruns an assertion-shaped failure automatically, under full recording, once by default.
 The `replay` evidence key names the resulting trace.
+
+## Skip replay when an application frame remains
+
+A propagating exception leaves the raising application method on the stack. The failure snapshot holds that method and its locals. A second run adds a cost and a side effect risk without adding evidence.
+
+The default rule counts application frames outside the test file. It also excludes Ruby library paths and gem paths. No application frame causes replay. At least one application frame causes a skip.
+
+The red Minitest fixture measured both shapes. Its assertion failure had no application frame outside the test file. Its propagating exception retained `Order.total` with its locals.
+
+The evidence records `replay_skipped_reason: "application_frame_available"` for a skip. This key distinguishes the skip from a replay attempt that produced no trace.
 
 ## Run replay in a child process
 
@@ -213,16 +223,17 @@ bulldogger runs replay as a separate `ruby` process instead. The child inherits 
 It does not inherit the parent's live objects or its running state.
 A crash, a timeout, or a wrong exit status in the child does not change the parent suite's exit code or failure count.
 
-This design keeps the zero-cost-when-green property. Replay adds cost only after a failure, once by default, bounded to the one process that investigates it.
+This design keeps the zero-cost-when-green property. The default rule adds replay cost only when the failure frames cannot answer, once per run by default.
 
 ## Keep replay on by default, and state its side effect beside the switch
 
-Replay exists to find a value that a snapshot alone cannot reach, so the default enables it.
+Replay exists to find a value that a snapshot alone cannot reach, so the default enables the frame-based rule.
 Replay also runs the failing test a second time. A test with a side effect performs that effect twice: a file write, an external request, or a sandbox account change.
 
-The side effect applies only after a failure, never on a green run.
+The default rule reduces the failures that receive a second run. The side effect remains for each replayed failure and never applies on a green run.
 The default stays on because the value replay finds outweighs that cost for most suites.
-Any application can turn replay off: `BULLDOGGER_REPLAY=0` for one process, or `config.replay_on_failure = false` for the application.
+An application can select the old behavior with `BULLDOGGER_REPLAY=always` or `config.replay_on_failure = :always`.
+It can turn replay off with `BULLDOGGER_REPLAY=0` or `config.replay_on_failure = false`.
 `BULLDOGGER_DISABLE=1` turns off replay along with every other capture.
 
 ## Verify a replay trace by its content

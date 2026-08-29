@@ -9,7 +9,8 @@ license: MIT
 
 Choose the smallest evidence source that answers the question:
 
-- Read an existing failure file when test output has `bulldogger evidence:`.
+- Read an existing failure file when test output has `bulldogger evidence:`. Its frames and locals answer a propagated exception on their own.
+- Read its replay trace when an assertion raised after the producing method returned.
 - Use `probe` for one method or for a before-and-after behavior check.
 - Use `record` when you must follow the full call sequence.
 
@@ -20,10 +21,10 @@ Run `bulldogger skill path` to print its installed directory.
 Read [failure evidence](references/failure-evidence.md) for snapshot modes, frames, limits, and missing values.
 Read [probe evidence](references/probe.md) for method shapes, raised exits, samples, and comparisons.
 Read [record traces](references/record.md) for JSONL events, limits, and queries.
-Read [replay traces](references/replay.md) when a failure's frames hold no application code and you need the value's origin.
+Read [replay traces](references/replay.md) for the decision between snapshot frames and a replay trace.
 
 `probe` and `record` are explicit, expensive verbs for one focused run.
-Replay runs automatically after a failure, once by default, in a child process.
+Replay runs automatically when a failure's frames cannot answer, once by default, in a child process.
 The environment disable switches stop all three approaches, and they stop replay too.
 
 ## Check the TracePoint visibility limit
@@ -51,4 +52,8 @@ Either switch prevents file output, so no `frames_unavailable_reason` exists.
 
 Read `capture_mode` before you infer what the file can show.
 Then follow the failure reference.
-When the frames hold only the test framework and the test body, follow the replay reference instead.
+Use the frames when an exception propagated from an application method. The raising method and its locals remain in the snapshot. The evidence has no `replay` key and records `replay_skipped_reason: "application_frame_available"`.
+
+Follow the replay reference when an assertion left only the test framework and the test body in the frames. The producing method returned before the assertion raised, so its calls and returns appear in the replay trace.
+
+A missing `replay` key with a recorded skip reason means the frames already answer the question. Do not search for a trace that bulldogger deliberately did not make.

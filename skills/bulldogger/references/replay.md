@@ -1,7 +1,13 @@
 # Read a replay trace
 
-Use this procedure when a failure came from an assertion and the evidence frames hold no application code.
-Replay reruns the same test under full recording, and the resulting trace is where the answer lives.
+First choose between the two failure shapes:
+
+- A propagated exception keeps the raising application method and its locals in the snapshot. The evidence records `replay_skipped_reason: "application_frame_available"` and has no `replay` key. The frames already answer the question.
+- An assertion raises after the producing method returns. Its snapshot holds the test framework and the test body. The replay trace contains the producing call and return.
+
+A missing `replay` key with the recorded skip reason does not describe a defect. Bulldogger deliberately skipped replay because the frames already answer the question. Do not search for a trace in this case.
+
+Use this procedure for the assertion shape. Replay reruns the same test under full recording, and the resulting trace is where the answer lives.
 
 1. Read `capture_mode` in the evidence file. Check whether a `replay` key is present.
    When `replay_reproduced` is `false`, the child ran the test alone and passed.

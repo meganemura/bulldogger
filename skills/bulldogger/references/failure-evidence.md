@@ -23,9 +23,11 @@ Frame 0 is the raise site.
 For assertion failures, framework assertion code can occupy the first frames.
 A generated Minitest failure placed the test method at index 2.
 
-The frames can hold no application code at all.
-An assertion raises after the code under test already returned, so a value produced by that code left no frame on the stack.
-When the frames stop at the test framework and the test body, read [replay traces](replay.md) for the value's origin.
+An exception can propagate while the raising application method remains on the stack. Its frame and locals answer the question. The evidence records `replay_skipped_reason: "application_frame_available"` and has no `replay` key.
+
+An assertion raises after the code under test already returned, so the produced value has no application frame. When the frames stop at the test framework and the test body, read [replay traces](replay.md) for the value's origin.
+
+A missing `replay` key with the recorded skip reason describes a deliberate skip. Use the application frame instead of looking for a trace.
 
 List the frame labels and paths:
 

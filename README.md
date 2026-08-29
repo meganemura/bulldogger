@@ -83,7 +83,7 @@ This separation lets an outer observer remain active while test setup replaces t
 
 bulldogger provides three ways to collect runtime evidence:
 
-- A failure snapshot is the default. Green tests do not capture data when they raise no exception. On a failure, bulldogger also replays the test once under full recording, so a value returned before the failure still reaches the evidence.
+- A failure snapshot is the default. Green tests do not capture data when they raise no exception. The snapshot answers a propagated exception from its frames and locals. For an assertion, bulldogger replays the test once under full recording because the application call has returned.
 - `probe` watches named methods during one explicit run.
 - `record` traces all Ruby method calls during one explicit run.
 
@@ -106,12 +106,13 @@ ArgumentError: expected 3 to equal the sum of [1, 2, 3]
     test/fixtures/minitest_red/app.rb:9:in 'Order.total'
     test/fixtures/minitest_red/red_test.rb:20:in 'RedTest#test_deep_raise'
 bulldogger evidence: /home/you/project/tmp/bulldogger/run-20260829-100406-58231/001-RedTest-test_deep_raise.json
-bulldogger replay: /home/you/project/tmp/bulldogger/run-20260829-100406-58231/trace-001.jsonl
 ```
 
 Open the path after `bulldogger evidence:`.
 The file contains one failure and its captured runtime values.
-The `bulldogger replay:` line appears when replay ran for that failure. Read [Replay a failing test](#replay-a-failing-test) for the settings and the side effect.
+The evidence file has `replay_skipped_reason: "application_frame_available"` for this propagated exception. Its `Order.total` frame contains the application locals, so replay did not run.
+
+The `bulldogger replay:` line appears when replay runs for a failure. Read [Replay a failing test](#replay-a-failing-test) for the rule, settings, and side effect.
 
 Each run uses this layout:
 
@@ -132,7 +133,11 @@ The [evidence schema](docs/evidence-schema.md) defines every field and capture m
 
 An assertion raises after the code under test already returned. The failure snapshot then holds the test framework and the test body, and no application frames. More frames do not help. The call that produced the wrong value already left the stack.
 
-bulldogger reruns that one failing test under full recording to reach the value. Replay runs in a child process, so the parent suite's result stays unchanged. A green run replays nothing, so the zero-cost-when-green property still holds. The added cost applies only after a failure, once by default, in an isolated process.
+bulldogger reruns that one failing test under full recording to reach the value. An exception has a different shape. Its application code remains on the stack while the exception propagates. The snapshot already holds that code and its locals, so bulldogger skips replay.
+
+The default rule counts application frames outside the test file. Zero such frames causes replay. One or more such frames cause a skip with `replay_skipped_reason: "application_frame_available"`. A missing `replay` key with this reason means the frames already answer the question.
+
+Replay runs in a child process, so the parent suite's result stays unchanged. A green run replays nothing, so the zero-cost-when-green property still holds. The added cost applies only after an assertion-shaped failure, once by default, in an isolated process.
 
 Evidence gains a `replay` key with the absolute path to the trace. It also gains a `replay_reproduced` key. This key is `true` when the child failed the same way, and `false` when the child passed. A `false` value means the failure did not reproduce alone. This usually points to a test that depends on run order or on state shared with another test.
 
@@ -140,11 +145,11 @@ Replay settings:
 
 | Attribute | Default | Effect |
 |---|---|---|
-| `replay_on_failure` | `true` | Reruns a failing test under full recording. |
+| `replay_on_failure` | `true` | Replays when the frames contain no application code outside the test file. `:always` replays every failure. `false` never replays. |
 | `max_replays` | `1` | Caps the number of replays for one run. |
 | `replay_timeout` | `60` | Seconds before bulldogger cancels the replay child. A cancelled replay writes no `replay` or `replay_reproduced` key. |
 
-Replay runs the failing test a second time. A test with a side effect performs that effect twice: a file write, an external request, or a sandbox account change. Set `BULLDOGGER_REPLAY=0` to turn off replay for one process. Set `config.replay_on_failure = false` to turn it off for the application. `BULLDOGGER_MAX_REPLAYS` overrides the cap. `BULLDOGGER_DISABLE=1` turns off replay along with every other capture.
+Replay runs fewer tests under the default rule. A replayed test still performs each side effect again: a file write, an external request, or a sandbox account change. Set `BULLDOGGER_REPLAY=0` to turn off replay for one process. Set `BULLDOGGER_REPLAY=always` to replay every failure. Set `config.replay_on_failure` to `false` or `:always` for the same application policies. `BULLDOGGER_MAX_REPLAYS` overrides the cap. `BULLDOGGER_DISABLE=1` turns off replay along with every other capture.
 
 The [replay reference](skills/bulldogger/references/replay.md) tells an agent how to narrow a trace to the value's origin.
 The [trace schema](docs/trace-schema.md) defines the event fields a replay trace holds.
@@ -290,7 +295,7 @@ These environment variables configure a child test process:
 | `BULLDOGGER_DISABLED` | `1` | Alias for `BULLDOGGER_DISABLE`. |
 | `BULLDOGGER_OUTPUT_DIR` | A nonempty path | The default is `tmp/bulldogger`, relative to the working directory. |
 | `BULLDOGGER_FRAME_SOURCE` | `capture_frames` or `degraded` | The default is automatic selection. |
-| `BULLDOGGER_REPLAY` | `0` | Replay is enabled by default. `0` disables replay for one process. |
+| `BULLDOGGER_REPLAY` | `0`, `1`, or `always` | The default is `1`. It replays when the frames cannot answer. `0` disables replay. `always` replays every failure. |
 | `BULLDOGGER_MAX_REPLAYS` | An integer | Overrides `max_replays`, the number of replays for one run. The default is `1`. |
 
 ## Secrets and limits

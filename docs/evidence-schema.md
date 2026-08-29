@@ -20,8 +20,9 @@ The run directory also contains `index.json`, which lists the failure files.
 | `skill` | String | when available | Absolute path to the installed `SKILL.md`. |
 | `replay` | String | when replay wrote a trace file | Absolute path to the replay trace. |
 | `replay_reproduced` | Boolean | when replay ran to completion | `true` when the replayed test failed the same way, `false` when it passed. |
+| `replay_skipped_reason` | String | when the default rule skips replay | Reason that the failure snapshot already answers the question. |
 
-Both replay fields are absent when replay did not run. Causes: capture disabled, replay itself turned off, the framework unsupported, `max_replays` already reached, or the replay child timed out.
+The `replay` key is absent when replay did not run. A `replay_skipped_reason` value distinguishes a deliberate skip because the frames already answer the question. Other causes include disabled replay, an unsupported framework, an exhausted `max_replays` limit, or a replay child timeout.
 `replay_reproduced` can be present with no `replay` field, when the child ran but wrote no trace file.
 Read [Replay evidence](#replay-evidence) for an example and where to read the trace.
 
@@ -264,7 +265,7 @@ The `latest` symlink points to the last finished run when the filesystem support
 
 ## Replay evidence
 
-Replay reruns one failing test under full recording, in a child process, and adds the `replay` and `replay_reproduced` keys to that test's evidence file.
+The default rule replays a failure when its frames contain no application code outside the test file. This shape occurs when an assertion raises after the producing method returns. Replay runs in a child process and adds the `replay` and `replay_reproduced` keys.
 `replay` names the absolute path to the trace, written into the same run directory as the evidence file.
 
 This excerpt came from a generated Minitest failure, with the replay keys the file also carries:
@@ -275,16 +276,35 @@ This excerpt came from a generated Minitest failure, with the replay keys the fi
   "capture_mode": "capture_frames",
   "test": {
     "framework": "minitest",
-    "id": "RedTest#test_deep_raise",
+    "id": "RedTest#test_assertion_failure",
     "file": "test/fixtures/minitest_red/red_test.rb",
-    "line": 19
+    "line": 12
   },
   "replay": "/home/you/project/tmp/bulldogger/run-20260829-100406-58231/trace-001.jsonl",
   "replay_reproduced": true
 }
 ```
 
-Replay defaults to on, replays one failing test for each run, and cancels a replay child that runs past 60 seconds.
+When an exception propagates, an application method can remain in the frames with its locals. The default rule skips replay and records the reason:
+
+```json
+{
+  "test": {"id": "RedTest#test_deep_raise"},
+  "frames": [
+    {
+      "index": 0,
+      "path": "test/fixtures/minitest_red/app.rb",
+      "label": "Order.total",
+      "locals": {"qty": {"value": "3"}}
+    }
+  ],
+  "replay_skipped_reason": "application_frame_available"
+}
+```
+
+This skip shape has no `replay` key. The missing key does not identify a replay failure. It means the frames already answer the question.
+
+Replay defaults to this frame-based rule, replays at most one test for each run, and cancels a child after 60 seconds.
 See the [README](../README.md#replay-a-failing-test) for the settings, the switches that turn replay off, and the side effect a second run of a test can cause.
 Read the [replay reference](../skills/bulldogger/references/replay.md) for narrowing a trace to the value's origin.
 

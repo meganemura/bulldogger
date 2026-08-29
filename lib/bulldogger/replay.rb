@@ -5,8 +5,12 @@ require "rbconfig"
 require "timeout"
 
 module Bulldogger
-  # Replays one failed test in an isolated process with full recording.
-  # Replay failures stay diagnostic and cannot change the parent suite result.
+  # Records one failed test again because a failure snapshot can miss the cause.
+  # The application method has returned when an assertion raises. In one
+  # third-party gem, its snapshot could not reveal a one-character fault.
+  # Additional stack frames were rejected because they cannot contain that call.
+  # Replay observes a new execution and records the application call.
+  # This class does not change the parent test result or record green tests.
   class Replay
     def initialize(config:)
       @config = config
@@ -24,29 +28,21 @@ module Bulldogger
       end
       path = (traces(run_dir) - before).last
       { path: path, reproduced: !status.success? }
+    # Replay is diagnostic work. A timeout, crash, or setup error must not
+    # change the parent exit code or add a failure to the parent suite.
     rescue Exception => e # rubocop:disable Lint/RescueException
       warn("bulldogger: replay failed: #{e.class}: #{e.message}") if ENV["BULLDOGGER_DEBUG"] == "1"
       nil
     end
 
-    # Boots this process as the replay child: starts a Record session
-    # writing into the same run directory the parent's evidence lives
-    # in. A class method, not inline code at the bottom of this file,
-    # so a unit test can call it directly -- necessary because the
-    # call site below is unreachable to `rake coverage`'s own
-    # instrumentation. Ruby processes a command line's own -r flags
-    # before RUBYOPT's (confirmed empirically: a marker file required
-    # via -r on the command line logs before one required via
-    # RUBYOPT), and #command always puts "-rbulldogger/replay" on the
-    # command line by design -- the child must start recording before
-    # the test framework itself boots, not after. So in a
-    # coverage-instrumented run this file is fully loaded, and the
-    # call site below already evaluated, before Coverage.start (loaded
-    # via RUBYOPT) ever runs. The method body has no such problem:
-    # called from a normal `require`d context such as a unit test, it
-    # runs after Coverage.start like anything else. The same
-    # limitation, and the same fix, already applies to
-    # lib/bulldogger/version.rb -- see test/test_helper.rb.
+    # The replay uses a child because an in-process run can pollute global state
+    # and change the parent result. Parent recording was rejected because it
+    # makes green runs about sixty times slower. The child confines this cost.
+    #
+    # This method starts recording before the test framework starts. A later
+    # start can miss boot calls that the test needs. The method also gives the
+    # coverage suite a callable seam. Ruby loads command-line requirements
+    # before the coverage setup in RUBYOPT, so coverage cannot see the call site.
     def self.boot_replay_child!(run_dir: ENV.fetch("BULLDOGGER_REPLAY_RUN_DIR"))
       require_relative "../bulldogger"
       replay_instance = Struct.new(:config, :run_dir).new(Bulldogger::Config.new, run_dir)
@@ -82,39 +78,24 @@ module Bulldogger
       end
     end
 
-    # The child is a fresh `ruby` invocation, not a fork: it starts
-    # with only Ruby's own default $LOAD_PATH, none of what the
-    # parent's boot script added on top. Measured against a real gem
-    # (crmne/archspec): its test files `require "test_helper"` relying
-    # on Rake::TestTask's own `-Itest`, and without forwarding that
-    # directory the child died on load before a single application
-    # frame reached the trace.
+    # A new Ruby process loses paths that the parent boot added. Without those
+    # paths, a test can fail to load its helper. Its trace then has boot events
+    # but no application calls. This failure occurred in a third-party gem.
     #
-    # Forwarding is filtered, not the whole $LOAD_PATH verbatim:
-    # Ruby's own stdlib/site/vendor directories and every installed
-    # gem's lib/ are already on the child's $LOAD_PATH from its own
-    # boot (RbConfig's paths are compiled in; Bundler/RubyGems
-    # re-derive gem paths from the inherited environment -- GEM_HOME,
-    # BUNDLE_GEMFILE -- the same way the parent did). Re-adding
-    # hundreds of those as -I flags would be pure noise on the command
-    # line. What is NOT already there, and DOES need forwarding, is
-    # whatever the app's own boot script added on top of that --
-    # test/, a custom lib/ variant, and similar.
+    # The filter drops Ruby library paths and installed gem paths. The child
+    # rebuilds them from Ruby, RubyGems, Bundler, and the inherited environment.
+    # Forwarding them would add hundreds of duplicate command arguments. The
+    # child receives paths outside the Ruby and gem directory prefixes.
     #
-    # -I flags, not RUBYOPT, carry the result: each path is its own
-    # array element, so a path containing a space needs no
-    # shell-quoting logic of its own the way splitting a single
-    # RUBYOPT string on whitespace would.
+    # Separate -I arguments preserve spaces in paths. A RUBYOPT string would
+    # require parsing and shell quoting, which can change a valid path.
     def forwarded_load_path_flags
       builtin_dirs = RbConfig::CONFIG.values_at("rubylibdir", "sitedir", "vendordir").compact
       installed_gem_dirs = Gem.path
       excluded = builtin_dirs + installed_gem_dirs
 
-      # to_s guards against a $LOAD_PATH entry that is a Pathname
-      # rather than a String (some apps push those) -- start_with?
-      # would raise on one, and #call's own `rescue Exception` would
-      # then swallow the whole replay silently, which is the exact
-      # failure shape this feature exists to avoid.
+      # Some apps add Pathname values. String#start_with? would reject them and
+      # prevent replay, so conversion keeps an app load path usable.
       $LOAD_PATH.map(&:to_s)
                 .reject { |path| excluded.any? { |dir| path.start_with?(dir) } }
                 .uniq

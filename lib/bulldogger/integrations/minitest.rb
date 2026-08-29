@@ -5,8 +5,8 @@ require "json"
 require_relative "../../bulldogger"
 
 module Bulldogger
-  # Connects Minitest lifecycle events to one selected Bulldogger instance.
-  # It does not change Minitest test isolation or exception handling.
+  # Connects Minitest failures to evidence and replay paths.
+  # It does not change test isolation, exception handling, or test results.
   module Minitest
     class << self
       attr_writer :instance
@@ -28,6 +28,8 @@ module Bulldogger
       return if @wired
 
       @wired = true
+      # The child records full execution. A second failure observer could start
+      # nested replay and could change the isolated test result.
       return if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
 
       instance.start

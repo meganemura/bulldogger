@@ -5,10 +5,8 @@ require_relative "version"
 require_relative "skill"
 
 module Bulldogger
-  # Assembles and writes one evidence file: the exception, the test it
-  # failed in, and (if the ring still has it) the snapshot captured at
-  # :raise time.
-  # Capture owns runtime observation; this class only formats stored data.
+  # Writes stored failure data and links valid replay evidence.
+  # Capture and Replay own runtime observation; this class does not observe it.
   #
   # The exception's message and backtrace are read here, at report
   # time, not inside the :raise hook. Exception#backtrace can still be
@@ -48,16 +46,11 @@ module Bulldogger
     def attach_replay(payload, result)
       return unless result
 
-      # "replay" only names a path that actually exists on disk (the
-      # same rule the skill key follows): a trace the child never
-      # finished writing must not be named. "replay_reproduced" is a
-      # separate signal -- whether the child's own exit status matched
-      # a failure -- and is written whenever replay ran at all, even
-      # if the trace itself is missing, so a reproduced-but-untraced
-      # replay is not silently indistinguishable from one that never
-      # ran (the exact bug this fix exists to close: this key was
-      # previously written only for the false case, leaving every
-      # true case as an absent key that read as null in the JSON).
+      # A broken path costs a reader more than a missing key. Replay and skill
+      # paths must resolve to files, so replay names only an existing trace.
+      #
+      # A false value means the failure passed in isolation. This signal can
+      # reveal order dependence or shared state, so silence would lose evidence.
       payload["replay"] = result[:path] if result[:path] && File.file?(result[:path])
       payload["replay_reproduced"] = result[:reproduced]
     end

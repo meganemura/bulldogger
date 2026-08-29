@@ -43,13 +43,10 @@ class ReplayLoadPathTest < Minitest::Test
 
   private
 
-  # The check this task exists to strengthen: not "a replay key
-  # exists" (evidence["replay"] alone), but "the fixture's own
-  # application method -- the thing an agent is trying to find --
-  # actually made it into the trace". A trace with only boot events
-  # (Kernel#require, Bundler internals) would still have a replay key
-  # and still pass a presence-only check, which is exactly how this
-  # bug shipped through 17 green runs.
+  # An earlier implementation wrote an empty trace and still supplied a replay
+  # key. A path check accepted that trace, although it gave an agent no evidence
+  # about the code under test. These assertions require the fixture method call,
+  # its arguments, and its return value.
   def assert_signature_call_and_return_in_replay(stdout)
     replay_paths = replay_paths_from_stdout(stdout)
     assert_equal 1, replay_paths.size, "in stdout:\n#{stdout}"

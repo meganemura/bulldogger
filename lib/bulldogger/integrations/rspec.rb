@@ -5,8 +5,8 @@ require "json"
 require_relative "../../bulldogger"
 
 module Bulldogger
-  # Connects RSpec lifecycle events to one selected Bulldogger instance.
-  # It does not control RSpec execution or formatter behavior.
+  # Connects RSpec failures to evidence and replay paths.
+  # It does not control test execution, formatter behavior, or test results.
   module RSpec
     class << self
       attr_writer :instance
@@ -52,6 +52,8 @@ module Bulldogger
 end
 
 ::RSpec.configure do |config|
+  # The child records full execution. Failure hooks could start nested replay
+  # and could change the isolated test result, so the child skips these hooks.
   config.before(:suite) { Bulldogger::RSpec.instance.start unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1" }
 
   # after(:each), not a formatter hook: example.exception is already

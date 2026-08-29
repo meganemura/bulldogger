@@ -1,11 +1,9 @@
 # frozen_string_literal: true
 
 module Bulldogger
-  # Runtime knobs for capture, redaction, and file output. Each attribute
-  # has a hard-coded default so the tool works with zero setup; the
-  # environment variable overrides exist so an agent running tests in a
-  # child process can change behavior (for example, pointing output_dir
-  # at a scratch directory) without editing the app's own config file.
+  # Sets bounded runtime policy for capture, replay, redaction, and file output.
+  # It does not start capture or replay work.
+  # Environment overrides let a child change policy without app file changes.
   class Config
     DEFAULT_REDACT_PATTERNS = [
       /pass(?:word|wd)?/i,
@@ -33,6 +31,8 @@ module Bulldogger
       @max_samples = 10
       @redact_patterns = DEFAULT_REDACT_PATTERNS.dup
       @frame_source = :auto
+      # Failure-only replay keeps full recording away from green runs, where
+      # measurement showed a runtime cost of about sixty times.
       @replay_on_failure = true
       @max_replays = 1
       @replay_timeout = 60

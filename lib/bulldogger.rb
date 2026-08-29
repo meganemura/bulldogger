@@ -5,6 +5,7 @@ require_relative "bulldogger/config"
 require_relative "bulldogger/capture"
 require_relative "bulldogger/run"
 require_relative "bulldogger/evidence"
+require_relative "bulldogger/replay"
 require_relative "bulldogger/probe"
 require_relative "bulldogger/instance"
 

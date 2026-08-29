@@ -90,7 +90,11 @@ module Bulldogger
     end
 
     def evidence
-      @evidence ||= Evidence.new(config: config, run: run, capture: capture)
+      @evidence ||= Evidence.new(config: config, run: run, capture: capture, replay: replay)
+    end
+
+    def replay
+      @replay ||= Replay.new(config: config)
     end
   end
 end

@@ -19,10 +19,11 @@ module Bulldogger
   class Evidence
     SLUG_MAX_LENGTH = 80
 
-    def initialize(config:, run:, capture:)
+    def initialize(config:, run:, capture:, replay: nil)
       @config = config
       @run = run
       @capture = capture
+      @replay = replay
     end
 
     def record_failure(exception:, test:)
@@ -36,12 +37,30 @@ module Bulldogger
 
       path = @run.next_path(slug_for(test))
       payload = build_payload(exception: exception, test: test)
+      attach_replay(payload, @replay&.call(test: test, run_dir: File.dirname(path)))
       File.write(path, "#{JSON.pretty_generate(payload)}\n")
       @run.record(path, test: payload["test"], exception_summary: payload["exception"].slice("class", "message"))
       path
     end
 
     private
+
+    def attach_replay(payload, result)
+      return unless result
+
+      # "replay" only names a path that actually exists on disk (the
+      # same rule the skill key follows): a trace the child never
+      # finished writing must not be named. "replay_reproduced" is a
+      # separate signal -- whether the child's own exit status matched
+      # a failure -- and is written whenever replay ran at all, even
+      # if the trace itself is missing, so a reproduced-but-untraced
+      # replay is not silently indistinguishable from one that never
+      # ran (the exact bug this fix exists to close: this key was
+      # previously written only for the false case, leaving every
+      # true case as an absent key that read as null in the JSON).
+      payload["replay"] = result[:path] if result[:path] && File.file?(result[:path])
+      payload["replay_reproduced"] = result[:reproduced]
+    end
 
     def build_payload(exception:, test:)
       snapshot = @capture.snapshot_for(exception)

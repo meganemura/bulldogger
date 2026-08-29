@@ -9,6 +9,26 @@ class MinitestIntegrationTest < Minitest::Test
   RED_FIXTURE = File.join(BulldoggerAcceptanceHelper::ROOT, "test/fixtures/minitest_red/red_test.rb")
   GREEN_FIXTURE = File.join(BulldoggerAcceptanceHelper::ROOT, "test/fixtures/minitest_green/green_test.rb")
   FROZEN_FIXTURE = File.join(BulldoggerAcceptanceHelper::ROOT, "test/fixtures/minitest_red/frozen_failure_test.rb")
+  FLAKY_FIXTURE = File.join(BulldoggerAcceptanceHelper::ROOT, "test/fixtures/minitest_red/flaky_test.rb")
+
+  def test_replay_that_passes_records_the_non_reproduction
+    _stdout, _stderr, status, output_dir = run_fixture("ruby", FLAKY_FIXTURE)
+
+    refute status.success?
+    evidence = evidence_for(output_dir, "test_passes_only_during_replay")
+    assert_equal false, evidence["replay_reproduced"]
+    assert File.file?(evidence["replay"])
+  end
+
+  def test_replay_switch_preserves_the_failure_result_and_writes_no_trace
+    baseline_stdout, _stderr, baseline_status, = run_fixture("ruby", RED_FIXTURE)
+    stdout, _stderr, status, output_dir = run_fixture("ruby", RED_FIXTURE, env: { "BULLDOGGER_REPLAY" => "0" })
+
+    assert_equal baseline_status.exitstatus, status.exitstatus
+    assert_equal summary_counts(baseline_stdout), summary_counts(stdout)
+    assert_empty Dir.glob(File.join(output_dir, "run-*", "trace-*.jsonl"))
+    assert_empty replay_paths_from_stdout(stdout)
+  end
 
   def test_red_suite_writes_evidence_for_both_kinds_of_failure
     stdout, _stderr, status, output_dir = run_fixture("ruby", RED_FIXTURE)
@@ -18,6 +38,9 @@ class MinitestIntegrationTest < Minitest::Test
     paths = evidence_paths_from_stdout(stdout)
     assert_equal 2, paths.size, "one evidence line per failing test, in stdout:\n#{stdout}"
     paths.each { |path| assert File.exist?(path), "#{path} named in stdout but missing on disk" }
+    replay_paths = replay_paths_from_stdout(stdout)
+    assert_equal 1, replay_paths.size
+    assert File.exist?(replay_paths.first)
 
     assertion_failure = evidence_for(output_dir, "test_assertion_failure")
     deep_raise = evidence_for(output_dir, "test_deep_raise")
@@ -28,6 +51,9 @@ class MinitestIntegrationTest < Minitest::Test
     assert_seeded_locals_and_redaction(deep_raise, at_frame_index: 0)
     assert_equal "app.rb", File.basename(deep_raise["frames"][0]["path"])
     assert_equal "capture_frames", deep_raise["capture_mode"]
+    replay_evidence = [assertion_failure, deep_raise].find { |record| record["replay"] }
+    assert_equal replay_paths.first, replay_evidence["replay"]
+    assert_equal true, replay_evidence["replay_reproduced"]
 
     # Evidence is written per-failure, independent of suite end; this
     # is the check that Bulldogger.finish (index.json) and stop both

@@ -21,7 +21,7 @@ module Bulldogger
 
     attr_accessor :enabled, :output_dir, :max_frames, :max_locals,
                    :max_value_length, :max_pending, :max_samples, :redact_patterns,
-                   :frame_source
+                   :frame_source, :replay_on_failure, :max_replays, :replay_timeout
 
     def initialize
       @enabled = true
@@ -33,6 +33,9 @@ module Bulldogger
       @max_samples = 10
       @redact_patterns = DEFAULT_REDACT_PATTERNS.dup
       @frame_source = :auto
+      @replay_on_failure = true
+      @max_replays = 1
+      @replay_timeout = 60
       apply_env_overrides
     end
 
@@ -52,6 +55,10 @@ module Bulldogger
       # for first, and a kill switch that silently ignores the natural
       # spelling is worse than one that accepts an extra name.
       @enabled = false if ENV["BULLDOGGER_DISABLE"] == "1" || ENV["BULLDOGGER_DISABLED"] == "1"
+      @replay_on_failure = false if ENV["BULLDOGGER_REPLAY"] == "0"
+      @max_replays = Integer(ENV["BULLDOGGER_MAX_REPLAYS"], 10) if ENV["BULLDOGGER_MAX_REPLAYS"]
+    rescue ArgumentError
+      @max_replays = 1
     end
   end
 end

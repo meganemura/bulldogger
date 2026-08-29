@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "rspec/core"
+require "json"
 require_relative "../../bulldogger"
 
 module Bulldogger
@@ -37,15 +38,21 @@ module Bulldogger
     # silently missing evidence line.
     def self.annotate!(exception, path)
       original = exception.message
-      exception.define_singleton_method(:message) { "#{original}\nbulldogger evidence: #{path}" }
+      replay_path = JSON.parse(File.read(path))["replay"]
+      suffix = "\nbulldogger evidence: #{path}"
+      suffix += "\nbulldogger replay: #{replay_path}" if replay_path
+      exception.define_singleton_method(:message) { "#{original}#{suffix}" }
     rescue FrozenError
       $stdout.puts "bulldogger evidence: #{path}"
+      $stdout.puts "bulldogger replay: #{replay_path}" if replay_path
+    rescue JSON::ParserError, SystemCallError
+      exception.define_singleton_method(:message) { "#{original}\nbulldogger evidence: #{path}" }
     end
   end
 end
 
 ::RSpec.configure do |config|
-  config.before(:suite) { Bulldogger::RSpec.instance.start }
+  config.before(:suite) { Bulldogger::RSpec.instance.start unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1" }
 
   # after(:each), not a formatter hook: example.exception is already
   # set by the time this runs (Example#run assigns it before
@@ -54,6 +61,8 @@ end
   # RSpec's own formatters render the failure, or the added line would
   # never reach the user's terminal.
   config.after(:each) do |example|
+    next if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
+
     exception = example.exception
     next unless exception
 
@@ -62,6 +71,8 @@ end
   end
 
   config.after(:suite) do
+    next if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
+
     Bulldogger::RSpec.instance.finish
     Bulldogger::RSpec.instance.stop
   end

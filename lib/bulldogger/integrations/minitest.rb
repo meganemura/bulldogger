@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "minitest"
+require "json"
 require_relative "../../bulldogger"
 
 module Bulldogger
@@ -27,6 +28,8 @@ module Bulldogger
       return if @wired
 
       @wired = true
+      return if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
+
       instance.start
       ::Minitest.reporter << Reporter.new
       ::Minitest.after_run do
@@ -43,12 +46,14 @@ module Bulldogger
     # klass/name/source_location rather than from re-deriving them.
     class Reporter < ::Minitest::AbstractReporter
       def record(result)
+        return if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
+
         failure = result.failure
         return if failure.nil? || result.skipped?
 
         exception = exception_for(failure)
         path = Minitest.instance.record_failure(exception: exception, test: test_for(result))
-        annotate!(failure, path) if path
+        annotate!(failure, path, replay_path(path)) if path
       end
 
       private
@@ -86,11 +91,20 @@ module Bulldogger
       # and #define_singleton_method on a frozen object raises --
       # fall back to printing the line ourselves so a frozen exception
       # never means a silently missing evidence line.
-      def annotate!(failure, path)
+      def replay_path(path)
+        JSON.parse(File.read(path))["replay"]
+      rescue JSON::ParserError, SystemCallError
+        nil
+      end
+
+      def annotate!(failure, path, replay_path)
         original = failure.message
-        failure.define_singleton_method(:message) { "#{original}\nbulldogger evidence: #{path}" }
+        suffix = "\nbulldogger evidence: #{path}"
+        suffix += "\nbulldogger replay: #{replay_path}" if replay_path
+        failure.define_singleton_method(:message) { "#{original}#{suffix}" }
       rescue FrozenError
         $stdout.puts "bulldogger evidence: #{path}"
+        $stdout.puts "bulldogger replay: #{replay_path}" if replay_path
       end
     end
   end

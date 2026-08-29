@@ -17,6 +17,7 @@ module BulldoggerAcceptanceHelper
   # any directory), so a relative match here would let a regression on
   # that point go unchecked.
   EVIDENCE_LINE = %r{bulldogger evidence: (/\S+\.json)}.freeze
+  REPLAY_LINE = %r{bulldogger replay: (/\S+\.jsonl)}.freeze
 
   # Runs `bundle exec <cmd> <args>` from the repo root -- `cmd` is
   # "ruby" for minitest fixtures (a plain `ruby file.rb` is how
@@ -49,6 +50,10 @@ module BulldoggerAcceptanceHelper
 
   def evidence_paths_from_stdout(text)
     text.scan(EVIDENCE_LINE).flatten
+  end
+
+  def replay_paths_from_stdout(text)
+    text.scan(REPLAY_LINE).flatten
   end
 
   def no_run_directory?(output_dir)

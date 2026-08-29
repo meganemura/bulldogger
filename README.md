@@ -37,6 +37,14 @@ bulldogger skill path
 
 The first command installs the skill on the agent host. The second command prints the matching gem copy.
 
+The CLI has these subcommands:
+
+```text
+bulldogger skill path
+bulldogger version
+bulldogger --version
+```
+
 Add one framework entry point.
 
 For Minitest, add this line to `test_helper.rb`:
@@ -139,7 +147,7 @@ The default rule counts application frames outside the test file. Zero such fram
 
 Replay runs in a child process, so the parent suite's result stays unchanged. A green run replays nothing, so the zero-cost-when-green property still holds. The added cost applies only after an assertion-shaped failure, once by default, in an isolated process.
 
-Evidence gains a `replay` key with the absolute path to the trace. It also gains a `replay_reproduced` key. This key is `true` when the child failed the same way, and `false` when the child passed. A `false` value means the failure did not reproduce alone. This usually points to a test that depends on run order or on state shared with another test.
+Evidence gains a `replay` key with the absolute path to the trace. It also gains a `replay_reproduced` key. This key is `true` when the child exits unsuccessfully, and `false` when the child passes. A `false` value means the failure did not reproduce alone. This usually points to a test that depends on run order or on state shared with another test.
 
 Failure output marks the file that contains the useful runtime data:
 
@@ -247,20 +255,19 @@ Each condition has three runs, and the table gives each median.
 
 | condition | without bulldogger | with bulldogger | ratio |
 |---|---:|---:|---:|
-| 2,000,000 no-op iterations with no raised exception | 0.0389s | 0.0387s | 0.99x |
-| 10,000 raise and rescue cycles | 0.0052s | 0.4256s | 82.60x |
-| 200 recorded failures with file output | 0.0001s | 0.0252s | 412.85x |
+| 2,000,000 no-op iterations with no raised exception | 0.0423s | 0.0424s | 1.00x |
+| 10,000 raise and rescue cycles | 0.0055s | 0.4468s | 81.14x |
+| 200 recorded failures with file output | 0.0001s | 0.0277s | 413.58x |
 
-The second condition costs 42.042 microseconds for each exception.
-Repeated runs measured 40 to 42 microseconds and 76x to 83x.
+The second condition costs 44.126 microseconds for each exception in this measurement.
 
 The capture cost has this measured breakdown:
 
 | stage | added cost for each exception |
 |---|---:|
-| Subscribe to `TracePoint(:raise)` | 0.019 microseconds |
-| Call `DEBUGGER__.capture_frames` | 1.411 microseconds |
-| Serialize, redact, and insert into the ring | 24.198 microseconds |
+| Subscribe to `TracePoint(:raise)` | 0.136 microseconds |
+| Call `DEBUGGER__.capture_frames` | 1.288 microseconds |
+| Serialize, redact, and insert into the ring | 23.220 microseconds |
 
 Frame capture has a small cost in this measurement, while later processing accounts for most of the measured cost.
 
@@ -270,16 +277,18 @@ A green suite can still raise and rescue exceptions, and each exception incurs t
 ### Explicit verb cost
 
 The proportionality harness used one app fixture for both verbs.
-It measured 1353.3 ns per targeted method call for `probe`.
-It measured 3872.2 ns per traced call for `record`.
+It measured 1461.5 ns per targeted method call for `probe`.
+It measured 4249.5 ns per traced call for `record`.
 
 `probe` cost scales with calls to the targeted method, which the harness names M.
 `record` cost scales with all traced calls, which the harness names N.
-With M/N at 0.25, the fixture measured `probe` at 9.07x and `record` at 103.72x.
+With M/N at 0.25, the fixture measured `probe` at 8.70x and `record` at 104.93x.
 These ratios describe this app fixture, and another app has a different M/N value.
 
-The record-specific harness measured value capture at 34.18x.
-The complete path, including the JSONL write, measured 50.56x.
+The record-specific harness measured value capture at 36.19x.
+The complete path, including the JSONL write, measured 54.72x.
+Repeated runs on the same machine placed value capture between 34x and 37x, and the complete path between 48x and 55x.
+Read these figures as a range rather than a constant.
 
 `probe` and `record` are explicit verbs for one focused run before or after a change.
 Do not apply either verb continuously to the full suite.
@@ -295,7 +304,7 @@ Replay does not run either, because replay starts from the evidence step that th
 The test exit code and failure count stay unchanged.
 Acceptance tests confirm this behavior for Minitest and RSpec.
 
-A rescue-heavy green suite measured 0.99x with bulldogger disabled.
+A rescue-heavy green suite measured 1.00x with bulldogger disabled.
 
 ## Environment variables
 
@@ -338,11 +347,11 @@ The defaults keep 20 frames and 50 locals for each frame.
 Each rendered value keeps 200 characters, and each Array or Hash keeps 10 elements.
 The evidence file marks omitted or truncated data.
 
-## Scope of version 0.1
+## Scope of version 0.2
 
-Version 0.1 provides failure snapshots, targeted probes, and explicit full records.
+Version 0.2 provides failure snapshots, automatic failure replay, targeted probes, explicit full records, and independent instances.
 It writes JSON evidence and JSONL traces.
-The version 0.1 boundary exposes file artifacts and an offline SQLite converter.
+The version 0.2 boundary exposes file artifacts and an offline SQLite converter.
 
 The [design decisions](docs/design-decisions.md) explain the three approaches and their measured costs.
 

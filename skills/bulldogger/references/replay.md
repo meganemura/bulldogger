@@ -12,6 +12,7 @@ Use this procedure when the output marks the replay trace.
 Replay reruns the test under full recording.
 
 1. Read `capture_mode` in the evidence file. Check whether a `replay` key is present.
+   A `true` value means the child exited unsuccessfully.
    When `replay_reproduced` is `false`, the child ran the test alone and passed.
    The trace records a passing run, so do not use it as the failure trace.
 2. When the failure came from an assertion, expect the frames to hold only the test framework and the test body.

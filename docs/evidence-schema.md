@@ -19,7 +19,7 @@ The run directory also contains `index.json`, which lists the failure files.
 | `limits` | Object | always | Limits used for this capture. |
 | `skill` | String | when available | Absolute path to the installed `SKILL.md`. |
 | `replay` | String | when replay wrote a trace file | Absolute path to the replay trace. |
-| `replay_reproduced` | Boolean | when replay ran to completion | `true` when the replayed test failed the same way, `false` when it passed. |
+| `replay_reproduced` | Boolean | when replay ran to completion | `true` when the replay child exited unsuccessfully, `false` when it passed. |
 | `replay_skipped_reason` | String | when the default rule skips replay | Reason that the failure snapshot already answers the question. |
 
 The `replay` key is absent when replay did not run. A `replay_skipped_reason` value distinguishes a deliberate skip because the frames already answer the question. Other causes include disabled replay, an unsupported framework, an exhausted `max_replays` limit, or a replay child timeout.

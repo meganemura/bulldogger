@@ -53,6 +53,6 @@ Either switch prevents file output, so no `frames_unavailable_reason` exists.
 Read `capture_mode` before you infer what the file can show.
 Then follow the failure reference.
 The output parenthetical selects the evidence snapshot or the replay trace.
-Check `replay_reproduced` before you interpret a replay trace as a failing run.
+Check `replay_reproduced` before you interpret a replay trace. A `true` value means the child exited unsuccessfully. A `false` value means it passed.
 
 A missing `replay` key with `replay_skipped_reason: "application_frame_available"` means the frames contain the raising method. Do not search for a replay trace in this case.

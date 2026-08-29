@@ -51,9 +51,14 @@ class MinitestIntegrationTest < Minitest::Test
     assert_seeded_locals_and_redaction(deep_raise, at_frame_index: 0)
     assert_equal "app.rb", File.basename(deep_raise["frames"][0]["path"])
     assert_equal "capture_frames", deep_raise["capture_mode"]
-    replay_evidence = [assertion_failure, deep_raise].find { |record| record["replay"] }
-    assert_equal replay_paths.first, replay_evidence["replay"]
-    assert_equal true, replay_evidence["replay_reproduced"]
+    assert_equal replay_paths.first, assertion_failure["replay"]
+    assert_equal true, assertion_failure["replay_reproduced"]
+    trace_events = File.readlines(assertion_failure["replay"]).drop(1).map { |line| JSON.parse(line) }
+    fixture_events = trace_events.select { |event| event["method"] == "RedTest#test_assertion_failure" }
+    assert fixture_events.any? { |event| event["event"] == "call" }
+    assert fixture_events.any? { |event| event["event"] == "return" }
+    assert_equal "application_frame_available", deep_raise["replay_skipped_reason"]
+    refute deep_raise.key?("replay")
 
     # Evidence is written per-failure, independent of suite end; this
     # is the check that Bulldogger.finish (index.json) and stop both
@@ -61,6 +66,30 @@ class MinitestIntegrationTest < Minitest::Test
     run_dir = run_dir_for(output_dir)
     refute_nil run_dir, "no run-* directory under #{output_dir}"
     assert File.exist?(File.join(run_dir, "index.json"))
+  end
+
+  def test_always_replays_assertion_and_exception_failures
+    stdout, _stderr, status, output_dir = run_fixture("ruby", RED_FIXTURE, env: { "BULLDOGGER_REPLAY" => "always", "BULLDOGGER_MAX_REPLAYS" => "2" })
+
+    refute status.success?
+    assert_equal 2, replay_paths_from_stdout(stdout).size
+    %w[test_assertion_failure test_deep_raise].each do |test_id|
+      evidence = evidence_for(output_dir, test_id)
+      assert File.file?(evidence["replay"])
+      refute evidence.key?("replay_skipped_reason")
+    end
+  end
+
+  def test_false_configuration_replays_neither_failure
+    _stdout, _stderr, status, output_dir = run_fixture("ruby", RED_FIXTURE, env: { "BULLDOGGER_REPLAY" => "0" })
+
+    refute status.success?
+    assert_empty Dir.glob(File.join(output_dir, "run-*", "trace-*.jsonl"))
+    %w[test_assertion_failure test_deep_raise].each do |test_id|
+      evidence = evidence_for(output_dir, test_id)
+      refute evidence.key?("replay")
+      refute evidence.key?("replay_skipped_reason")
+    end
   end
 
   # Appending the evidence line has two tiers: tag the failure

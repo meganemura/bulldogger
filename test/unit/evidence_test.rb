@@ -259,7 +259,7 @@ class EvidenceTest < Minitest::Test
   private
 
   StubReplay = Struct.new(:path, :reproduced, keyword_init: true) do
-    def call(test:, run_dir:)
+    def call(test:, run_dir:, frames:)
       { path: path, reproduced: reproduced }
     end
   end

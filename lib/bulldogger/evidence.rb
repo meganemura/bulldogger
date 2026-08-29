@@ -35,7 +35,8 @@ module Bulldogger
 
       path = @run.next_path(slug_for(test))
       payload = build_payload(exception: exception, test: test)
-      attach_replay(payload, @replay&.call(test: test, run_dir: File.dirname(path)))
+      result = @replay&.call(test: test, run_dir: File.dirname(path), frames: payload["frames"])
+      attach_replay(payload, result)
       File.write(path, "#{JSON.pretty_generate(payload)}\n")
       @run.record(path, test: payload["test"], exception_summary: payload["exception"].slice("class", "message"))
       path
@@ -52,7 +53,8 @@ module Bulldogger
       # A false value means the failure passed in isolation. This signal can
       # reveal order dependence or shared state, so silence would lose evidence.
       payload["replay"] = result[:path] if result[:path] && File.file?(result[:path])
-      payload["replay_reproduced"] = result[:reproduced]
+      payload["replay_reproduced"] = result[:reproduced] if result.key?(:reproduced)
+      payload["replay_skipped_reason"] = result[:skipped_reason] if result[:skipped_reason]
     end
 
     def build_payload(exception:, test:)

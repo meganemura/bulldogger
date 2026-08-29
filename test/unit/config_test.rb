@@ -15,6 +15,14 @@ class ConfigTest < Minitest::Test
       assert_equal false, config.replay_on_failure
       assert_equal 3, config.max_replays
     end
+
+    with_env("BULLDOGGER_REPLAY" => "1") do
+      assert_equal true, Bulldogger::Config.new.replay_on_failure
+    end
+
+    with_env("BULLDOGGER_REPLAY" => "always") do
+      assert_equal :always, Bulldogger::Config.new.replay_on_failure
+    end
   end
 
   # Integer(str, 10) raises ArgumentError for anything that is not a

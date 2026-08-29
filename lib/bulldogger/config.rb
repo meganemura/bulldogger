@@ -55,7 +55,11 @@ module Bulldogger
       # for first, and a kill switch that silently ignores the natural
       # spelling is worse than one that accepts an extra name.
       @enabled = false if ENV["BULLDOGGER_DISABLE"] == "1" || ENV["BULLDOGGER_DISABLED"] == "1"
-      @replay_on_failure = false if ENV["BULLDOGGER_REPLAY"] == "0"
+      case ENV["BULLDOGGER_REPLAY"]
+      when "0" then @replay_on_failure = false
+      when "1" then @replay_on_failure = true
+      when "always" then @replay_on_failure = :always
+      end
       @max_replays = Integer(ENV["BULLDOGGER_MAX_REPLAYS"], 10) if ENV["BULLDOGGER_MAX_REPLAYS"]
     rescue ArgumentError
       @max_replays = 1

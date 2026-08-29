@@ -18,7 +18,7 @@ Gem::Specification.new do |spec|
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = spec.homepage
-  spec.metadata["changelog_uri"] = "#{spec.homepage}/releases"
+  spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
   # Requires a second factor for account-level gem operations. Releases
   # go out through RubyGems.org Trusted Publishing, which authenticates
   # with a short-lived OIDC token from the release workflow rather than
@@ -32,7 +32,7 @@ Gem::Specification.new do |spec|
   # bulldogger for the first time meets it through a failure message,
   # with no network: the schema reference and the skill must already be
   # on disk next to the code that wrote the file.
-  spec.files = Dir["lib/**/*.rb", "exe/**", "docs/**/*.md", "skills/**/*.md", "README.md", "LICENSE*"]
+  spec.files = Dir["lib/**/*.rb", "exe/**", "docs/**/*.md", "skills/**/*.md", "README.md", "README.ja.md", "CHANGELOG.md", "LICENSE*"]
   spec.bindir = "exe"
   spec.executables = ["bulldogger"]
   spec.require_paths = ["lib"]

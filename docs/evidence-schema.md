@@ -53,6 +53,71 @@ The final `envelope` record describes the execution.
 The collector normalizes numeric segments in generated template method names.
 The fixed `__HASH__` token replaces both supported underscore forms.
 
+## Frame lifetime trace
+
+The `flt` command writes one JSON object per line.
+It traces one application frame selected by its `fid`.
+
+A `call` record starts the trace:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `type` | String | `call`. |
+| `fid` | String | Selected frame identifier. |
+| `args` | Object | Rendered entry arguments by name. |
+| `locals` | Object | All visible entry locals by name. |
+
+A `line` record has a `lineno` field.
+It can also have these change fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `new` | Object | Locals that became visible, with rendered values. |
+| `changed` | Object | Updated locals, with `old` and `new` rendered values. |
+| `out_of_scope` | Array of String | Local names that stopped being visible. |
+
+Apply `out_of_scope`, then `new`, then `changed` to reconstruct visible locals.
+
+A `skipped_iterations` record replaces folded middle loop iterations.
+Its `count` field gives the number of skipped iterations.
+The trace keeps the first and last loop iterations.
+
+A `raise` record has `exception_class` and a rendered `message`.
+A `return` record has the rendered return `value`.
+
+The final `envelope` record has these fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `schema_version` | Integer | Frame lifetime trace schema version. |
+| `code_state` | Object | Git commit and dirty-state marker. |
+| `command` | Array of String | Complete child command without edits. |
+| `exit_status` | Integer or null | Child exit status. |
+
+## Statement evaluation result
+
+The `exec` command writes one JSON object per line.
+It evaluates one statement at a selected line visit inside an application frame.
+
+An `evaluation` record has these fields:
+
+| Field | Type | Presence | Meaning |
+|---|---|---|---|
+| `type` | String | always | `evaluation`. |
+| `fid` | String | always | Selected frame identifier. |
+| `line` | Integer | always | Selected source line. |
+| `visit` | Integer | always | Selected visit to that line. |
+| `value` | Object | when evaluation returns | Rendered statement value. |
+| `exception_class` | String | when evaluation raises | Raised exception class. |
+| `message` | Object | when evaluation raises | Rendered exception message. |
+
+The launcher appends one `result` record.
+It repeats the address and the evaluation fields when evaluation ran.
+It also has `outcome` and `exit_status` for the child command.
+The `outcome` value is `pass`, `fail`, or `error`.
+
+The final `envelope` record has `schema_version`, `code_state`, and `command`.
+
 ## Top-level fields
 
 | Field | Type | Presence | Meaning |
@@ -72,19 +137,10 @@ The fixed `__HASH__` token replaces both supported underscore forms.
 | `frames_unavailable_reason` | String | in missed mode | Reason for an empty frame list. |
 | `limits` | Object | always | Limits used for this capture. |
 | `skill` | String | when available | Absolute path to the installed `SKILL.md`. |
-| `replay` | String | when replay wrote a trace file | Absolute path to the replay trace. |
-| `replay_reproduced` | Boolean | when replay ran to completion | `true` when the replay child exited unsuccessfully, `false` when it passed. |
-| `replay_skipped_reason` | String | when the default rule skips replay | Reason that the failure snapshot already answers the question. |
-
-The `replay` key is absent when replay did not run. A `replay_skipped_reason` value distinguishes a deliberate skip because the frames already answer the question. Other causes include disabled replay, an unsupported framework, an exhausted `max_replays` limit, or a replay child timeout.
-`replay_reproduced` can be present with no `replay` field, when the child ran but wrote no trace file.
-
-The failure output keeps stable `bulldogger evidence:`, `bulldogger rerun:`, and `bulldogger replay:` prefixes.
+The failure output keeps stable `bulldogger evidence:` and `bulldogger rerun:` prefixes.
 A parenthetical marks the file that contains the useful runtime data.
 The evidence line identifies available raising frames, missing origin frames, or a snapshot with no frames.
-The replay line identifies a reproduced failure or a passing isolated run.
 The rerun line gives a complete shell command when the framework supplies all required test data.
-Read [Replay evidence](#replay-evidence) for an example and where to read the trace.
 
 ## Code state fields
 
@@ -331,51 +387,6 @@ An Array or Hash uses a trailing `…` to mark elements after the first 10.
 
 Each failure path is relative to the run directory.
 The `latest` symlink points to the last finished run when the filesystem supports symlinks.
-
-## Replay evidence
-
-The default rule replays a failure when its frames contain no application code outside the test file. This shape occurs when an assertion raises after the producing method returns. Replay runs in a child process and adds the `replay` and `replay_reproduced` keys.
-`replay` names the absolute path to the trace, written into the same run directory as the evidence file.
-
-This excerpt came from a generated Minitest failure, with the replay keys the file also carries:
-
-```json
-{
-  "schema_version": 1,
-  "capture_mode": "capture_frames",
-  "test": {
-    "framework": "minitest",
-    "id": "RedTest#test_assertion_failure",
-    "file": "test/fixtures/minitest_red/red_test.rb",
-    "line": 12
-  },
-  "replay": "/home/you/project/tmp/bulldogger/run-20260829-100406-58231/trace-001.jsonl",
-  "replay_reproduced": true
-}
-```
-
-When an exception propagates, an application method can remain in the frames with its locals. The default rule skips replay and records the reason:
-
-```json
-{
-  "test": {"id": "RedTest#test_deep_raise"},
-  "frames": [
-    {
-      "index": 0,
-      "path": "test/fixtures/minitest_red/app.rb",
-      "label": "Order.total",
-      "locals": {"qty": {"value": "3"}}
-    }
-  ],
-  "replay_skipped_reason": "application_frame_available"
-}
-```
-
-This skip shape has no `replay` key. The missing key does not identify a replay failure. It means the frames already answer the question.
-
-Replay defaults to this frame-based rule, replays at most one test for each run, and cancels a child after 60 seconds.
-See the [README](../README.md#replay-a-failing-test) for the settings, the switches that turn replay off, and the side effect a second run of a test can cause.
-Read the [replay reference](../skills/bulldogger/references/replay.md) for narrowing a trace to the value's origin.
 
 ## Probe evidence
 

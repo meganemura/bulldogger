@@ -6,8 +6,7 @@ bulldogger は Ruby のテスト失敗を、コーディングエージェント
 各 JSON ファイルには、例外、バックトレース、取得したフレームの値が含まれます。
 失敗出力には、そのファイルの絶対パスが示されます。
 
-開発と計測には Ruby 4.0.6 と debug 1.11.1 を使用しました。
-bulldogger 0.2.0 では独立したインスタンスを追加し、ドッグフーディングをユニットテストスイートまで拡張しました。
+開発とスナップショットの計測には Ruby 4.0.6 と debug 1.11.1 を使用しました。
 
 ## インストール
 
@@ -42,6 +41,10 @@ bulldogger skill path
 CLI には次のサブコマンドがあります。
 
 ```text
+bulldogger frames -- command...
+bulldogger preflight -- command...
+bulldogger flt path:method#k [--index path] -- command...
+bulldogger exec path:method#k --line N [--visit K] --statement text [--index path] -- command...
 bulldogger skill path
 bulldogger version
 bulldogger --version
@@ -77,7 +80,7 @@ observer.start
 ```
 
 各インスタンスは、設定、取得の購読、実行、証拠の状態を所有します。
-モジュールのファサードが提供する失敗、probe、record、SQLite 変換の各メソッドも利用できます。
+モジュールのファサードが提供する失敗と probe の各メソッドも利用できます。
 
 インテグレーションには、デフォルトの代わりに指定したインスタンスを使えます。
 
@@ -89,24 +92,26 @@ Bulldogger::RSpec.instance = observer
 テストスイートが始まる前にインスタンスを指定します。
 この分離により、テストのセットアップがデフォルトインスタンスを置き換えても、外側のオブザーバーは動作を続けられます。
 
-## 3 つの方法
+## コストモデル
 
-bulldogger は、実行時の証拠を収集する 3 つの方法を提供します。
+常時有効な処理は、失敗スナップショットを取得します。
+例外が発生しない green テストでは処理を行いません。
+監視した例外 1 件には microseconds 単位のコストがかかります。
 
-- 失敗スナップショットがデフォルトです。例外が発生しない green テストではデータを取得しません。伝播した例外については、フレームとローカル変数から答えを得られます。アサーションではアプリケーションの呼び出しがすでに戻っているため、bulldogger は完全な記録のもとでテストを 1 回リプレイします。
-- `probe` は、明示的な 1 回の実行中に指定したメソッドを監視します。
-- `record` は、明示的な 1 回の実行中にすべての Ruby メソッド呼び出しをトレースします。
+スナップショットのベンチマークには Ruby 4.0.6 を使いました。
+raise と rescue の 1 サイクルあたり 44.126 microseconds を計測しました。
+そのうちフレーム取得には 1.288 microseconds がかかりました。
 
-失敗したテストが証拠のパスをすでに示している場合は、失敗スナップショットを使います。
-1 つのメソッドを調べる場合や、変更の前後で動作を比較する場合は `probe` を使います。
-呼び出しシーケンス全体を追う必要がある場合は `record` を使います。
+再実行は明示的です。
+`frames`、`preflight`、`flt`、`exec` は、ユーザーが実行したときだけ新しいプロセスを開始します。
+`probe` も、ユーザーが選んだブロックの周囲でだけ動作します。
 
-## 失敗出力
+## 失敗スナップショットから開始
 
 次のコマンドから、この出力を得ました。
 
 ```sh
-bundle exec ruby -Ilib test/fixtures/minitest_red/red_test.rb
+bundle exec ruby -Ilib test/fixtures/minitest_red/red_test.rb --seed 12345
 ```
 
 ```text
@@ -115,16 +120,14 @@ RedTest#test_deep_raise:
 ArgumentError: expected 3 to equal the sum of [1, 2, 3]
     test/fixtures/minitest_red/app.rb:9:in 'Order.total'
     test/fixtures/minitest_red/red_test.rb:20:in 'RedTest#test_deep_raise'
-bulldogger evidence: /home/you/project/tmp/bulldogger/run-20260829-100406-58231/001-RedTest-test_deep_raise.json (raising method is in these frames)
+bulldogger evidence: /home/you/project/tmp/bulldogger/run-20260831-192835-69510/001-RedTest-test_deep_raise.json (raising method is in these frames)
+bulldogger rerun: bundle exec ruby -Itest test/fixtures/minitest_red/red_test.rb -n /\\Atest_deep_raise\\z/ --seed 12345
 ```
 
 括弧内の案内がある行のパスを開きます。
 このファイルには、1 件の失敗と取得した実行時の値が含まれます。
-この伝播した例外の証拠ファイルには `replay_skipped_reason: "application_frame_available"` があり、`Order.total` フレームにアプリケーションのローカル変数が含まれるため、リプレイは実行されませんでした。
-
-失敗に対してリプレイを実行すると、`bulldogger replay:` 行が表示されます。
-括弧内の説明は、再現した失敗または成功したリプレイを示します。
-規則、設定、副作用については、[失敗したテストのリプレイ](#失敗したテストのリプレイ)を参照してください。
+rerun 行には、そのテストと seed に対する完全なコマンドが含まれます。
+bulldogger は、このコマンドを自動では実行しません。
 
 各実行では次の配置を使います。
 
@@ -134,67 +137,106 @@ tmp/bulldogger/
   run-20260829-100406-58231/
     001-RedTest-test_deep_raise.json
     002-RedTest-test_assertion_failure.json
-    trace-001.jsonl
     index.json
 ```
 
 [`bulldogger` skill](skills/bulldogger/SKILL.md) は、エージェントがこれらのファイルを調べる方法を説明します。
 [証拠スキーマ](docs/evidence-schema.md)は、すべてのフィールドと取得モードを定義します。
 
-## 失敗したテストのリプレイ
+## frames による分離実行のインデックス作成
 
-アサーションが例外を発生させる時点では、テスト対象のコードはすでに戻っています。
-この場合、失敗スナップショットにはテストフレームワークとテスト本体が含まれ、アプリケーションのフレームは含まれません。
-フレーム数を増やしても役に立たず、誤った値を生成した呼び出しはすでにスタックから外れています。
+rerun コマンドを `frames` の下で実行します。
 
-bulldogger は完全な記録のもとで失敗したテスト 1 件を再実行し、その値に到達します。
-例外の形は異なり、例外の伝播中はアプリケーションコードがスタックに残ります。
-スナップショットにコードとローカル変数がすでに含まれるため、bulldogger はリプレイを省略します。
-
-デフォルトの規則は、テストファイル外にあるアプリケーションフレームを数えます。
-そのフレームが 0 件ならリプレイし、1 件以上なら `replay_skipped_reason: "application_frame_available"` を付けて省略します。
-この理由があり `replay` キーがない場合、フレームから答えを得られます。
-
-リプレイは子プロセスで動くため、親テストスイートの結果は変わりません。
-green の実行ではリプレイを行わないため、green のときにコストがないという特性も保たれます。
-追加コストはアサーション型の失敗後に限って発生し、デフォルトでは分離されたプロセスで 1 回だけ実行します。
-
-証拠には、トレースの絶対パスを持つ `replay` キーが追加されます。
-さらに `replay_reproduced` キーも追加されます。
-子プロセスが失敗終了するとこのキーは `true` になり、成功すると `false` になります。
-`false` は、その失敗が単独では再現しなかったことを示します。
-通常は、実行順序や別のテストとの共有状態に依存するテストを示唆します。
-
-失敗出力は、有用な実行時データを含むファイルを示します。
-
-```text
-bulldogger evidence: /abs/path/evidence.json
-bulldogger replay: /abs/path/trace.jsonl (value was produced before the assertion raised)
+```sh
+bulldogger frames -- bundle exec ruby -Itest test/fixtures/frames/minitest_frames_test.rb --seed 12345
 ```
 
-成功したリプレイでは `(test passed alone; this trace shows the passing run)` を使います。
-リプレイを実行できない場合、証拠の行は値の生成元がフレームにないことを示します。
-リプレイが無効な場合、証拠の括弧内には `BULLDOGGER_REPLAY=1` も示されます。
-取得に失敗した場合、スナップショットにフレームがないことを示します。
+コマンドはインデックスのパスと子プロセスの結果を表示します。
 
-リプレイの設定は次のとおりです。
+```text
+bulldogger frames: /home/you/project/tmp/bulldogger/frames-69833.jsonl
+bulldogger result: pass (exit 0)
+```
 
-| 属性 | デフォルト | 効果 |
-|---|---|---|
-| `replay_on_failure` | `true` | テストファイル外のアプリケーションコードをフレームが含まない場合にリプレイします。`:always` はすべての失敗をリプレイします。`false` はリプレイしません。 |
-| `max_replays` | `1` | 1 回の実行に対するリプレイ数を制限します。 |
-| `replay_timeout` | `60` | bulldogger がリプレイの子プロセスを中止するまでの秒数です。中止したリプレイは `replay` キーも `replay_reproduced` キーも書きません。 |
+インデックスは各呼び出しにフレーム識別子 `fid` を付けます。
+形式は `path:method#k` です。
+数値は、テスト区間内にある同じメソッドの呼び出しを数えます。
+インデックスには、アプリケーション、フレームワーク、gem のフレームが含まれます。
 
-デフォルトの規則は、リプレイするテストを絞ります。
-リプレイしたテストは、ファイル書き込み、外部リクエスト、サンドボックスアカウントの変更などの各副作用を再度実行します。
-1 つのプロセスでリプレイを無効にするには `BULLDOGGER_REPLAY=0` を設定します。
-すべての失敗をリプレイするには `BULLDOGGER_REPLAY=always` を設定します。
-アプリケーションで同じ方針を設定するには、`config.replay_on_failure` に `false` または `:always` を指定します。
-`BULLDOGGER_MAX_REPLAYS` は上限を上書きします。
-`BULLDOGGER_DISABLE=1` は、ほかのすべての取得とともにリプレイも無効にします。
+## preflight による分離再実行の検証
 
-[リプレイのリファレンス](skills/bulldogger/references/replay.md)は、エージェントがトレースを値の生成元まで絞り込む方法を説明します。
-[トレーススキーマ](docs/trace-schema.md)は、リプレイトレースが持つイベントフィールドを定義します。
+`flt` または `exec` の前に `preflight` を実行します。
+
+```sh
+bulldogger preflight -- bundle exec ruby -Itest test/fixtures/frames/minitest_frames_test.rb --seed 12345
+```
+
+同じコマンドを別々のプロセスで 2 回実行します。
+2 つのアプリケーションフレーム列を比較します。
+
+```text
+bulldogger preflight: deterministic (app frames: 3)
+bulldogger preflight indexes: /home/you/project/tmp/bulldogger/frames-70427.jsonl /home/you/project/tmp/bulldogger/frames-70432.jsonl
+```
+
+preflight が `deterministic` を表示した場合に限って、`flt` または `exec` を使います。
+どちらの動詞もアプリケーションのフレーム識別子だけを受け付けます。
+
+## flt による 1 フレームのトレース
+
+アプリケーションの `fid` と同じ分離コマンドを渡します。
+
+```sh
+bulldogger flt test/fixtures/flt/minitest_flt_test.rb:branchy#1 -- bundle exec ruby -Itest test/fixtures/flt/minitest_flt_test.rb --seed 12345
+```
+
+```text
+bulldogger flt: /home/you/project/tmp/bulldogger/flt-77206.jsonl
+bulldogger result: pass (exit 0)
+```
+
+トレースには、フレーム開始、行ごとの変更、raise、return が含まれます。
+新しいローカル変数は `new` に、更新は `changed` に記録します。
+スコープを外れたローカル変数は `out_of_scope` に列挙します。
+ループ中間の反復は `skipped_iterations` レコードにまとめます。
+
+`--index path` は、インデックスと再実行に同じコード状態マーカーを要求します。
+
+## exec による 1 文の評価
+
+アプリケーションフレーム内の 1 回の行訪問を指定します。
+
+```sh
+bulldogger exec test/fixtures/exec/minitest_exec_test.rb:threshold#1 --line 9 --statement 'binding.local_variable_set(:result, 10)' -- bundle exec ruby -Itest test/fixtures/exec/minitest_exec_test.rb --seed 12345 -n test_injection_can_change_the_outcome
+```
+
+```text
+bulldogger exec: /home/you/project/tmp/bulldogger/exec-77267.jsonl
+bulldogger value: 10
+bulldogger result: pass (exit 0)
+```
+
+`exec` は選択したフレームの binding で文を評価します。
+デフォルトでは、その行の最初の訪問を選びます。
+後の訪問には `--visit K` を使います。
+launcher は必要な `BULLDOGGER_EXEC=1` token を子プロセスへ渡します。
+`--index path` は、同じコード状態マーカーを要求します。
+
+文はテストの動作を変え、副作用を発生させる可能性があります。
+変更後の結果を証拠に使う前に、結果ファイルを読みます。
+
+## RSpec の乱数 seed
+
+RSpec は seed を例の順序に使います。
+RSpec は `Kernel.srand` を呼びません。
+例が `rand` を呼ぶ場合は、`RSpec.configure` 内に次の行を追加します。
+
+```ruby
+config.before(:suite) { Kernel.srand config.seed }
+```
+
+この行により、表示された rerun seed で乱数値を再現できます。
+bulldogger はアプリケーションに代わって `Kernel.srand` を呼びません。
 
 ## probe によるメソッドの指定
 
@@ -242,33 +284,6 @@ result.fetch("identical")
 }
 ```
 
-## 呼び出しシーケンスの記録
-
-完全な呼び出しシーケンスが必要な場合は、対象を絞った 1 つの処理を囲みます。
-
-```ruby
-trace_path = Bulldogger.record do
-  run_related_test
-end
-```
-
-結果は JSONL ファイルであり、ヘッダーと call、return、raise の各イベントに対応するオブジェクトを含みます。
-次の抜粋は、生成したトレースから得ました。
-
-```jsonl
-{"schema_version":1,"kind":"record","events":["call","return","raise"],"limits":{"max_value_length":200}}
-{"event":"call","seq":1,"depth":1,"path":"-e","line":1,"method":"ProseTrace#outer","args":{"value":{"value":"3"}}}
-{"event":"return","seq":4,"depth":1,"path":"-e","line":1,"method":"ProseTrace#outer","return":{"value":"6"}}
-{"event":"raise","seq":7,"depth":2,"path":"-e","line":1,"method":"ProseTrace#inner","exception":{"class":"ArgumentError","message":"negative"}}
-{"event":"return","seq":8,"depth":2,"path":"-e","line":1,"method":"ProseTrace#inner","raised":true}
-```
-
-[トレーススキーマ](docs/trace-schema.md)は、イベントフィールドと検証済みの `jq` クエリーを定義します。
-
-JSONL が主要な記録形式です。
-`sqlite3` gem が利用できる場合、`Bulldogger.trace_to_sqlite(trace_path, db_path)` は既存のトレースを変換します。
-変換処理は soft require を使うため、bulldogger の実行時依存関係は 0 件のままです。
-
 ## コスト
 
 `TracePoint(:raise)` は、アプリケーションコードが rescue する例外を含む、発生したすべての例外を監視します。
@@ -298,22 +313,16 @@ green のテストスイートでも例外を発生させて rescue する場合
 
 ### 明示的な動詞のコスト
 
-比例関係の計測ハーネスでは、両方の動詞に 1 つのアプリケーションフィクスチャを使いました。
 `probe` では対象メソッドの呼び出し 1 回あたり 1461.5 ns を計測しました。
-`record` ではトレース対象の呼び出し 1 回あたり 4249.5 ns を計測しました。
+フレームの gate では、対象外の呼び出し 1 件あたり約 105 ns を計測しました。
 
-`probe` のコストは対象メソッドの呼び出し数に比例し、計測ハーネスではその数を M と呼びます。
-`record` のコストはトレース対象の全呼び出し数に比例し、計測ハーネスではその数を N と呼びます。
-M/N が 0.25 のとき、このフィクスチャでは `probe` が 8.70x、`record` が 104.93x でした。
-これらの比率はこのアプリケーションフィクスチャに対する値であり、別のアプリケーションでは M/N の値が異なります。
+`flt` の line event には約 0.5 microseconds の固定コストがあります。
+各ローカル変数の読み取りには、line event 1 件あたり約 0.1 microseconds が加わります。
+20 個のローカル変数と 10,000 件の line event を持つフレームには約 27 ms かかりました。
 
-record 専用の計測ハーネスでは、値の取得が 36.19x でした。
-JSONL への書き込みを含む完全な処理は 54.72x でした。
-同じ機械で繰り返し計測すると、値の取得は 34x から 37x、完全な処理は 48x から 55x の範囲に収まりました。
-これらの数値は定数ではなく範囲として読んでください。
-
-`probe` と `record` は、変更の前後に対象を絞って 1 回実行する明示的な動詞です。
-テストスイート全体へ継続的に適用しないでください。
+これらの計測には Ruby 4.0.6 と rubygems.org のテストスイートを使いました。
+スイートには 4,925 件のテストがあり、seed 12345 と 1 worker を使いました。
+計測日は 2026-08-31 です。
 
 ## bulldogger の無効化
 
@@ -322,7 +331,6 @@ JSONL への書き込みを含む完全な処理は 54.72x でした。
 
 どちらかのスイッチを使うと、起動処理は `TracePoint(:raise)` の購読前に戻ります。
 証拠を書かず、実行ディレクトリを作らず、失敗に証拠の行を追加しません。
-リプレイは、このスイッチが省略する証拠処理から始まるため、実行されません。
 テストの終了コードと失敗数は変わりません。
 受け入れテストは、Minitest と RSpec についてこの動作を確認しています。
 
@@ -338,8 +346,6 @@ rescue を多用する green のテストスイートでは、bulldogger を無�
 | `BULLDOGGER_DISABLED` | `1` | `BULLDOGGER_DISABLE` の別名です。 |
 | `BULLDOGGER_OUTPUT_DIR` | 空でないパス | デフォルトは作業ディレクトリからの相対パス `tmp/bulldogger` です。 |
 | `BULLDOGGER_FRAME_SOURCE` | `capture_frames` または `degraded` | デフォルトでは自動選択します。 |
-| `BULLDOGGER_REPLAY` | `0`、`1`、または `always` | デフォルトは `1` です。フレームから答えを得られない場合にリプレイします。`0` はリプレイを無効にします。`always` はすべての失敗をリプレイします。 |
-| `BULLDOGGER_MAX_REPLAYS` | 整数 | 1 回の実行に対するリプレイ数 `max_replays` を上書きします。デフォルトは `1` です。 |
 
 ## シークレットと上限
 
@@ -371,11 +377,11 @@ bulldogger は Hash をレンダリングするときにキーも検査します
 
 ## バージョン 0.2 の範囲
 
-Version 0.2 は、失敗スナップショット、失敗時の自動リプレイ、対象を指定した probe、明示的な完全記録、独立したインスタンスを提供します。
-JSON の証拠と JSONL のトレースを書き出します。
-Version 0.2 の境界は、ファイル成果物とオフラインの SQLite 変換機能を公開します。
+Version 0.2 は、失敗スナップショット、probe、フレームインデックス、決定性検査、フレーム生存期間トレース、文の評価、独立したインスタンスを提供します。
+JSON の証拠と JSONL の成果物を書き出します。
+重い取得は、明示的な動詞からだけ開始します。
 
-[設計判断](docs/design-decisions.md)は、3 つの方法と計測コストを説明します。
+[設計判断](docs/design-decisions.md)は、証拠モデルと計測コストを説明します。
 
 ## ライセンス
 

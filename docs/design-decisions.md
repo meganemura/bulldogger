@@ -247,3 +247,150 @@ That version passed the existing suite.
 
 The acceptance suite now reads the named trace and asserts that a chosen application method's own call and return appear in it, by name.
 A trace that holds no application events fails that assertion, even when the `replay` key is present.
+
+## Redirect version 0.2 to re-execution (2026-08-31)
+
+The entries below this one define the re-execution design.
+They replace the earlier version 0.2 plan where the two conflict.
+The gem has no published release, so the change breaks no user.
+
+Four concepts come from published work on agent debugging interfaces (arXiv:2604.24212):
+run the failing test again and collect statement-level detail for one selected frame during that run,
+the frame lifetime trace with entry arguments and per-statement state changes,
+the fold that keeps the first and last loop iterations,
+and statement injection for what-if analysis.
+That work measured 0.68 s to 0.87 s for a traced failing-test run on its Python benchmark.
+
+The identity, addressing, and file decisions are original to bulldogger:
+the application-boundary comparison rule, the normalized frame identity,
+the test-scoped raise ordinal, the stateless verbs over evidence files,
+and the code-state marker.
+Each has its own dated entry below.
+
+Every measurement below this line used ruby 4.0.6 and the rubygems.org
+test suite (4,925 tests, seed 12345, one worker), measured on 2026-08-31.
+
+## Retire the record verb and automatic replay (2026-08-31)
+
+Version 0.2 removes the `record` verb.
+Whole-run tracing measured 881x to 2869x with debug.gem's recorder, and 34x to 51x with the shipped record path.
+The `frames` verb builds a call index from one re-execution.
+A diff of two `frames` runs, plus a `probe` run, answers the questions record answered, at re-execution cost.
+
+Automatic replay also retires.
+The design principle keeps heavy work behind an explicit verb.
+The failure message from `snap` prints the complete rerun command, so the agent chooses each re-execution.
+
+## Compare executions inside the application boundary (2026-08-31)
+
+Two isolated runs of the same test, same seed, matched on the full event stream in 39% of a 200-test stratified sample.
+The mismatches sat in framework and gem frames: ActionView compiles each template into a method whose name embeds the process-random `String#hash`, and ActiveRecord fills type-metadata registries in varying first-seen order.
+Most mismatched pairs differed by fewer than 100 events out of hundreds of thousands.
+
+The same 200 pairs, compared only on frames whose paths sit under the application's `app/` and `lib/` directories, matched 200 of 200.
+Every pair also matched on the application event count.
+The sample's application event counts ranged from 1 to 3,561 with a median of 214.
+
+bulldogger therefore compares executions on application frames, with normalized method names.
+The normalization folds the numeric segments of compiled-template method names into one fixed token.
+A negative template hash turns its minus sign into an extra underscore, and the normalization accepts both spellings.
+The frames index still lists framework and gem frames, because navigation needs them.
+The comparison rule and the stability guarantee cover application frames.
+
+CRuby seeds its string hash from operating-system entropy at startup.
+Ruby 4.0.6 reads no environment variable for this seed, so a per-process name difference has no official off switch, and normalization handles it instead.
+
+## Verify determinism with two isolated runs (2026-08-31)
+
+The preflight runs the target test twice in isolation and compares the two application-frame sequences.
+This pair is the condition the verbs operate under, because every verb re-executes one test in a fresh process.
+
+A suite-to-suite comparison answers a different question.
+Two full-suite runs with one seed matched on raw full streams for 70% to 72% of 4,925 tests, across two independently built harnesses.
+Among 20 sampled tests that matched suite-to-suite, the isolated rerun reproduced the suite's stream for none of them, and the isolated event counts ran 16% to 5,318% higher.
+A fresh process resolves autoloads and builds caches inside the recorded window, and the suite process pays those costs before most tests start.
+The preflight therefore measures the isolated pair, and treats the suite trace as a separate execution.
+
+## Name a frame by its method and its in-test call index (2026-08-31)
+
+A frame identifier must survive a second process: the `frames` run builds the index, and a later `flt` or `exec` run must reach the same frame.
+The identifier is the normalized method identity plus the call count of that method inside the test window, written `path:method#k`.
+
+A process-global frame number fails this requirement, because whole-process streams matched in 39% of isolated pairs.
+Counting one method inside the test window rides on the 200-of-200 application-frame stability of isolated pairs.
+The published interface also names frames by function and call index; bulldogger narrows the counting window from the process to the test.
+
+Reaching call k costs one targeted TracePoint on `:call` and `:return`.
+The pass-through measured about 105 ns per non-target call, so the gate stays armed for the whole run.
+
+## Trace the selected frame with one targeted TracePoint (2026-08-31)
+
+`TracePoint#enable(target:)` on the method's instruction sequence fires `:line` events inside nested blocks and rescue clauses of that method.
+Ruby's own test suite pins this behavior in `test_tracepoint_enable_target`.
+One enable call therefore covers the whole frame.
+
+Reading every local on every line, with a capped shallow inspect and a change check, measured near 0.1 µs per local per line event, over a fixed floor near 0.5 µs per event.
+A frame with 20 locals and 10,000 line events costs about 27 ms.
+The cost follows line events times locals.
+
+## Record scope exit in the frame lifetime trace (2026-08-31)
+
+The trace prints entry arguments and locals in full, then only changed variables per line.
+A reconstruction test replayed the change records against full per-line snapshots on four application frames.
+Three frames reconstructed exactly.
+The fourth failed after each inner block exit: the block's locals left scope, the change vocabulary had no record for that, and the reconstruction kept stale values.
+
+The trace format therefore includes a scope-exit record.
+With that record, the change stream carries enough information to rebuild every line's visible locals.
+
+## Fold loops to their first and last iterations (2026-08-31)
+
+The trace keeps the first and the last iteration of a loop and replaces the middle with one skipped marker that carries the count.
+The fold works online with one iteration of delay, because the tracer learns that an iteration was the last one only when the loop exits.
+Buffer memory follows nesting depth times iteration size, and stayed flat from 10 to 100,000 iterations in measurement.
+
+On a collection-processing frame, the folded differential output measured 5,155 bytes against 50,994 bytes of full per-line output.
+The skipped iterations held distinct values, so a defect inside a middle iteration stays outside the trace.
+The marker declares that loss, and the fold trades it for the size reduction.
+
+## Gate statement injection behind a launch token (2026-08-31)
+
+`exec` evaluates an agent-supplied statement inside a chosen frame, so it runs only where the launcher intends.
+Four inferred test-environment signals were measured: environment variable names, loaded framework constants, the program name, and caller paths.
+Each signal produced a false positive and a false negative in measurement.
+
+The gate therefore reads one explicit token, `BULLDOGGER_EXEC=1`, that the re-execution launcher sets for the child.
+Without the token, `exec` refuses.
+`Binding#local_variable_set` writes through to method and block locals during a `:line` event, so injection needs no other machinery.
+The statement address is the frame identifier, the line, and the visit count of that line.
+
+## Restrict flt and exec targets to application frames (2026-08-31)
+
+The call index lists framework and gem frames, and their call counts vary between isolated runs.
+A target whose call count varies can silently select a different invocation on the next run.
+`flt` and `exec` therefore accept application frames and refuse the rest, and the refusal message names the alternatives: the call-tree view, the gem source, and `probe`.
+`probe` records arguments and returns for a named method without a call index, so it stays safe on gem methods.
+
+## Inject the collector through RUBYOPT (2026-08-31)
+
+The re-execution child loads the collector through `RUBYOPT="-r<absolute path>"`.
+Bundler prepends its own `-rbundler/setup` and keeps the absolute-path entry, and `Bundler.with_unbundled_env` keeps it too.
+A collector loaded from the test helper misses raises that happen while the application boots, and the boot window measured real rescued raises.
+
+`RUBYOPT` also reaches grandchildren: rake-spawned processes, parallel test workers, and processes the test itself starts.
+The collector records its process id, and the evidence separates child records from the target's records.
+A helper-line entry with an environment gate remains the fallback for a suite that rejects launcher-set options.
+
+## Stamp evidence with a code-state marker (2026-08-31)
+
+Every artifact from a re-execution carries the git commit and a digest of the dirty state.
+`git rev-parse HEAD` measured about 8 ms and `git status --porcelain` about 10 ms, so the marker is computed once per run and cached.
+`flt` and `exec` compare the marker of the index they were aimed with against their own run, and refuse or warn on a mismatch.
+An index from edited code would otherwise send the agent to line numbers that no longer exist.
+
+## Bridge the snapshot to the index with a test-scoped raise ordinal (2026-08-31)
+
+`snap` writes during the suite run, and `frames` writes during an isolated rerun.
+The two streams disagree on whole sequences, so the bridge uses a coordinate that both runs compute the same way: the count of `:raise` events since the test started, plus the raise's path, line, and exception class.
+A process-wide raise count failed this role in measurement, because earlier tests in the suite advance it.
+The test-scoped count survived the move from a suite run to an isolated run in measurement, with the caveat that a fresh process may rescue additional raises during lazy loading; the implementation verifies this on real suites before it relies on the ordinal.

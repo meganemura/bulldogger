@@ -8,7 +8,23 @@
 require "bulldogger/skill"
 require "bulldogger/version"
 
-usage = "Usage: bulldogger frames -- command... | bulldogger preflight -- command... | bulldogger skill path | bulldogger version | bulldogger --version"
+usage = "Usage: bulldogger flt <fid> [--index path] -- command... | bulldogger frames -- command... | bulldogger preflight -- command... | bulldogger skill path | bulldogger version | bulldogger --version"
+
+if ARGV.first == "flt"
+  require "bulldogger/flt"
+  begin
+    separator = ARGV.index("--")
+    raise ArgumentError, "flt requires a command after --" unless separator
+    options = ARGV[2...separator]
+    index = options.first == "--index" ? options[1] : nil
+    raise ArgumentError, "invalid flt options" unless options.empty? || (options.length == 2 && index)
+    status = Bulldogger::Flt.run(ARGV[1], ARGV.drop(separator + 1), index: index)
+    exit(status.respond_to?(:exitstatus) ? (status.exitstatus || 1) : status)
+  rescue ArgumentError => error
+    warn "bulldogger: #{error.message}"
+    exit 1
+  end
+end
 
 if ARGV.first(2) == ["frames", "--"]
   require "bulldogger/frames"

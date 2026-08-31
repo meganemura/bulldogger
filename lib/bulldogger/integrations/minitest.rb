@@ -49,6 +49,7 @@ module Bulldogger
     class Reporter < ::Minitest::AbstractReporter
       def prerecord(_klass, _name)
         Bulldogger::FramesCollector.begin_test if defined?(Bulldogger::FramesCollector)
+        Bulldogger::FltCollector.begin_test if defined?(Bulldogger::FltCollector)
         Minitest.instance.begin_test
       end
 
@@ -64,6 +65,7 @@ module Bulldogger
       ensure
         Minitest.instance.end_test unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
         Bulldogger::FramesCollector.end_test if defined?(Bulldogger::FramesCollector)
+        Bulldogger::FltCollector.end_test if defined?(Bulldogger::FltCollector)
       end
 
       private

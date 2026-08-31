@@ -54,6 +54,7 @@ end
   config.before(:suite) { Bulldogger::RSpec.instance.start unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1" }
   config.before(:each) do
     Bulldogger::FramesCollector.begin_test if defined?(Bulldogger::FramesCollector)
+    Bulldogger::FltCollector.begin_test if defined?(Bulldogger::FltCollector)
     Bulldogger::RSpec.instance.begin_test unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
   end
 
@@ -74,6 +75,7 @@ end
   ensure
     Bulldogger::RSpec.instance.end_test unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
     Bulldogger::FramesCollector.end_test if defined?(Bulldogger::FramesCollector)
+    Bulldogger::FltCollector.end_test if defined?(Bulldogger::FltCollector)
   end
 
   config.after(:suite) do

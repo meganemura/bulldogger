@@ -43,6 +43,21 @@ class CodeStateTest < Minitest::Test
     end
   end
 
+  # Open3.capture3("git", ...) raises Errno::ENOENT, not a non-zero
+  # exit status, when the git executable itself cannot be found -- an
+  # empty PATH reproduces that directly, the same failure a host
+  # without git installed would hit.
+  def test_missing_git_executable_returns_null_state
+    Dir.mktmpdir("bulldogger-code-state-") do |dir|
+      original_path = ENV.fetch("PATH", nil)
+      ENV["PATH"] = ""
+
+      assert_equal({ "git_sha" => nil, "dirty_digest" => nil }, Bulldogger::CodeState.capture(dir))
+    ensure
+      ENV["PATH"] = original_path
+    end
+  end
+
   private
 
   def git(dir, *args)

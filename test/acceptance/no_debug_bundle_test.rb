@@ -47,7 +47,7 @@ class NoDebugBundleTest < Minitest::Test
     File.write(gemfile, <<~RUBY)
       source "https://rubygems.org"
       gem "bulldogger", path: #{BulldoggerAcceptanceHelper::ROOT.inspect}
-      gem "minitest", "5.27.0"
+      gem "minitest", #{Minitest::VERSION.inspect}
     RUBY
     gemfile
   end

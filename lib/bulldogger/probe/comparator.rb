@@ -45,8 +45,9 @@ module Bulldogger
         add_diff(differences, label, "raised_exits", ma["raised_exits"], mb["raised_exits"])
         add_diff(differences, label, "parameters", ma["parameters"], mb["parameters"])
         add_diff(differences, label, "raised", ma["raised"], mb["raised"])
-        # Set only, not counts: contract-verbs.md compares "the set of
-        # callers", not how many times each one fired.
+        # Set only, not counts: this comparison treats "which call
+        # sites exist" as the behavior-preservation signal, not how
+        # many times each one fired.
         add_diff(differences, label, "callers", (ma["callers"] || {}).keys.sort, (mb["callers"] || {}).keys.sort)
         compare_bucket("#{label}.returns", ma["returns"], mb["returns"], differences)
         compare_params(label, ma["params"] || {}, mb["params"] || {}, differences)

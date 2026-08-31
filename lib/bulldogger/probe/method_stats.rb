@@ -59,7 +59,7 @@ module Bulldogger
         record_caller(local, caller_location)
       end
 
-      # raised: true means contract-verbs.md's raise-exit discriminator
+      # raised: true means RaiseTracker's raise-exit discriminator
       # fired for this return -- this call must not be counted as a
       # nil return (that would fabricate a "returned nil" the method
       # never actually did), so it updates the thread-local @raised

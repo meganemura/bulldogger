@@ -8,7 +8,7 @@ require "test_helper"
 # (never more than max_value_length + 1 characters) and the
 # "truncated iff cut, both truncated/original_length or neither"
 # biconditional must hold together, or a reader loses the ability to
-# trust the absence of those keys as "nothing was cut" (contract.md).
+# trust the absence of those keys as "nothing was cut".
 #
 # Checking the bounded entry against itself alone is not enough: a
 # formatter that silently chopped a value to fit, without ever

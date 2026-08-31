@@ -4,9 +4,10 @@ require "test_helper"
 require "json"
 require_relative "../fixtures/property/nested_raise"
 
-# The raise-exit discriminator (contract-verbs.md) is what tells "this
-# call returned nil" apart from "this call exited by raising" -- get
-# it wrong and the tool fabricates a return the method never made.
+# The raise-exit discriminator (Probe::RaiseTracker) is what tells
+# "this call returned nil" apart from "this call exited by raising"
+# -- get it wrong and the tool fabricates a return the method never
+# made.
 # probe_capture_test.rb covers one level of nesting; this property
 # generalizes to arbitrary nesting depth and arbitrary rescued/
 # unrescued/re-raise combinations, for Probe::RaiseTracker.
@@ -48,9 +49,10 @@ class DiscriminatorPropertyTest < Minitest::Test
   # to innermost ("rescued" catches Boom and returns normally,
   # "unrescued" lets it propagate), leaf is how the innermost call
   # actually exits ("raise", "return", or "reraise" -- rescue then a
-  # bare `raise`, contract-verbs.md's re-raise case). max_size: 4
-  # nests deep enough to exercise the checkpoint stack across several
-  # frames without making each test case too slow to shrink.
+  # bare `raise`, the fixture's re-raise case; see nested_raise.rb).
+  # max_size: 4 nests deep enough to exercise the checkpoint stack
+  # across several frames without making each test case too slow to
+  # shrink.
   def spec_list_generator
     arrays(
       tuples(

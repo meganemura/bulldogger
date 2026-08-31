@@ -6,11 +6,11 @@ module Bulldogger
     # classes and nil-ness (updated on every call), plus a bounded,
     # fully-serialized sample of the first max_samples values.
     #
-    # Tally and sample are deliberately split: contract-verbs.md
-    # measured full serialization at ~24us/event, which would blow the
-    # probe overhead budget on a call-dense target if it ran on every
-    # call. Class name and nil? never touch #inspect, so the tally
-    # stays cheap regardless of how many calls a session sees.
+    # Tally and sample are deliberately split: full serialization
+    # measures ~24us/event, which would blow the probe overhead budget
+    # on a call-dense target if it ran on every call. Class name and
+    # nil? never touch #inspect, so the tally stays cheap regardless
+    # of how many calls a session sees.
     class Bucket
       def initialize(formatter:, max_samples:, redacted_name: false)
         @formatter = formatter
@@ -33,8 +33,9 @@ module Bulldogger
         h = { "classes" => @classes, "nil_count" => @nil_count, "samples" => @samples }
         omitted = @count - @samples.size
         # Present only when something was actually cut, so a reader
-        # can trust its absence -- the same rule contract.md applies
-        # to frames_omitted/locals_omitted.
+        # can trust its absence -- the same rule capture.rb applies to
+        # frames_omitted and frame_source.rb applies to
+        # locals_omitted.
         h["samples_omitted"] = omitted if omitted.positive?
         h
       end

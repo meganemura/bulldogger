@@ -3,7 +3,7 @@
 require "test_helper"
 
 # Generalizes redactor_test.rb's hand-picked names/values to arbitrary
-# ones, at the two places contract.md gates redaction on a *name*:
+# ones, at the two places redaction gates on a *name*, not a value:
 #
 #   - a Hash key's own to_s (Formatter#render_pair): the key itself is
 #     an ordinary value, so it can be hegel-drawn directly, matching

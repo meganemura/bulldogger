@@ -141,9 +141,8 @@ class ProbeCaptureTest < Minitest::Test
     assert_equal true, sample["redacted"]
     refute sample.key?("value")
     # The class tally is structural, not the secret's content -- it is
-    # not gated by redaction, matching contract-verbs.md's "samples
-    # are where secrets accumulate" (classes/nil_count are not
-    # samples).
+    # not gated by redaction, matching the design decision that
+    # samples, not classes/nil_count, are where secrets accumulate.
     assert_equal({ "String" => 1 }, stats["Billing::Invoice#charge"]["params"]["api_token"]["classes"])
   end
 

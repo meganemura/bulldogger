@@ -7,14 +7,15 @@
 #
 # Defined at the top level, not nested in a fixture wrapper module:
 # probe targets are resolved by string ("Billing::Invoice#amount"),
-# and TargetResolver walks that path from Object, matching
-# contract-verbs.md's own example labels exactly.
+# and TargetResolver walks that path from Object, matching README.md's
+# own probe example ("Billing::Invoice#amount") exactly.
 module Billing
   class Invoice
     # A required positional arg plus a keyword with a default proves
     # both "actual argument recorded by name" and "a default-filled
-    # keyword argument is visible at :call time" (contract-verbs.md's
-    # measured `discount: nil` example) with a single target.
+    # keyword argument is visible at :call time" (measured directly:
+    # tp.binding shows discount: nil at :call, even when the caller
+    # never passed it) with a single target.
     def amount(mult, discount: nil)
       base = mult * 10
       discount ? base - discount : base

@@ -9,10 +9,12 @@ require_relative "writer"
 module Bulldogger
   module Probe
     # One probe run: resolves and reserves its targets, builds one
-    # TracePoint per target (contract-verbs.md: "1 TracePoint can only
-    # enable one target -- can't nest-enable a targeting TracePoint"),
-    # aggregates every observed call/return into MethodStats, and
-    # writes the evidence file on finish.
+    # TracePoint per target (enabling one TracePoint on a second
+    # target raises ArgumentError: "can't nest-enable a targeting
+    # TracePoint", measured directly -- so this session needs one
+    # TracePoint object per target, not one shared TracePoint reused
+    # across targets), aggregates every observed call/return into
+    # MethodStats, and writes the evidence file on finish.
     class Session
       def self.start(target_strings, config:, run:)
         return nil unless config.enabled

@@ -4,12 +4,12 @@ module Bulldogger
   module Probe
     # Tells a probed method's normal return apart from a raise-exit.
     # `:call`/`:return` can be targeted to one method, but `:raise`
-    # cannot (measured in contract-verbs.md): it fires globally, for
-    # every exception in the process. Distinguishing "returned nil"
+    # cannot (measured directly): it fires globally, for every
+    # exception in the process. Distinguishing "returned nil"
     # from "exited by raising" needs this second, global signal,
     # correlated with each targeted call through the checkpoint below.
     #
-    # Mechanism (contract-verbs.md, measured on ruby 4.0.6): a global
+    # Mechanism (measured on ruby 4.0.6): a global
     # counter that a `:raise` TracePoint increments and a `:rescue`
     # TracePoint decrements. `:call` records the counter's value; at
     # `:return`, a *positive delta* from that recorded value means an

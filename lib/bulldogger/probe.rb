@@ -17,9 +17,10 @@ module Bulldogger
   # See lib/bulldogger/probe/session.rb for the mechanism: one
   # TracePoint per target method (:call/:return, targeted -- cheap and
   # strictly filtered) plus one shared, ref-counted pair of untargeted
-  # TracePoints (:raise/:rescue, per contract-verbs.md the only way to
-  # tell a raise-exit apart from a method that legitimately returns
-  # nil).
+  # TracePoints (:raise/:rescue -- :raise cannot be targeted to one
+  # method, so this pair is the only way to tell a raise-exit apart
+  # from a method that legitimately returns nil; see
+  # raise_tracker.rb).
   module Probe
     def self.start(target_strings, config:, run:)
       Session.start(target_strings, config: config, run: run)

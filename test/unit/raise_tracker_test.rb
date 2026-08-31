@@ -35,7 +35,7 @@ class RaiseTrackerTest < Minitest::Test
 
   # ensure, not rescue: it runs while the exception is still
   # unwinding, before any rescue clause has matched it -- the same
-  # window contract-verbs.md's :return discriminator relies on (the
+  # window RaiseTracker's :return discriminator relies on (the
   # caller's own :rescue fires only after :return).
   def test_pop_and_raised_exit_is_true_while_a_raise_is_still_unwinding
     @tracker.push_checkpoint

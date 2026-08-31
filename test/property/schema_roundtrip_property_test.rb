@@ -8,8 +8,9 @@ require "json"
 # be lossy to write and read back. Draws arbitrary values into a real
 # captured local, then checks that reading a real, written file back
 # and running it through one more generate/parse cycle reproduces
-# exactly the same Ruby structure -- the round trip contract.md holds
-# evidence to.
+# exactly the same Ruby structure -- the round trip evidence JSON
+# must survive, since an agent reads this file as its source of
+# truth.
 class SchemaRoundtripPropertyTest < Minitest::Test
   def test_evidence_json_survives_a_second_generate_parse_cycle
     Hegel.test(test_cases: 40) do |tc|

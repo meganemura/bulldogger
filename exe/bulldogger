@@ -8,7 +8,34 @@
 require "bulldogger/skill"
 require "bulldogger/version"
 
-usage = "Usage: bulldogger flt <fid> [--index path] -- command... | bulldogger frames -- command... | bulldogger preflight -- command... | bulldogger skill path | bulldogger version | bulldogger --version"
+usage = "Usage: bulldogger exec <fid> --line N [--visit K] --statement text [--index path] -- command... | bulldogger flt <fid> [--index path] -- command... | bulldogger frames -- command... | bulldogger preflight -- command... | bulldogger skill path | bulldogger version | bulldogger --version"
+
+if ARGV.first == "exec"
+  require "bulldogger/exec"
+  begin
+    separator = ARGV.index("--")
+    raise ArgumentError, "exec requires a command after --" unless separator
+    options = ARGV[2...separator]
+    parsed = {}
+    until options.empty?
+      name = options.shift
+      value = options.shift
+      raise ArgumentError, "invalid exec options" unless %w[--line --visit --statement --index].include?(name) && value
+      raise ArgumentError, "duplicate exec option #{name}" if parsed.key?(name)
+      parsed[name] = value
+    end
+    raise ArgumentError, "exec requires --line" unless parsed["--line"]
+    raise ArgumentError, "exec requires --statement" unless parsed["--statement"]
+    status = Bulldogger::Exec.run(
+      ARGV[1], ARGV.drop(separator + 1), line: Integer(parsed["--line"], 10),
+      visit: Integer(parsed.fetch("--visit", "1"), 10), statement: parsed["--statement"], index: parsed["--index"]
+    )
+    exit(status.respond_to?(:exitstatus) ? (status.exitstatus || 1) : status)
+  rescue ArgumentError => error
+    warn "bulldogger: #{error.message}"
+    exit 1
+  end
+end
 
 if ARGV.first == "flt"
   require "bulldogger/flt"

@@ -77,6 +77,7 @@ if ENV["BULLDOGGER_FLT_OUT"] && ENV["BULLDOGGER_FLT_FID"]
           unless changed_names.empty?
             record["changed"] = changed_names.to_h { |name| [name, { "old" => @previous[name], "new" => current[name] }] }
           end
+          # Differential changes cannot reconstruct visible state after a block-local leaves scope.
           record["out_of_scope"] = removed unless removed.empty?
           fold(record)
           @previous = current
@@ -167,6 +168,7 @@ if ENV["BULLDOGGER_FLT_OUT"] && ENV["BULLDOGGER_FLT_FID"]
       @count = 0
       @mutex = Mutex.new
       @file = File.open("#{ENV.fetch('BULLDOGGER_FLT_OUT')}-#{Process.pid}.jsonl", "a")
+      # This gate stays active for the full run, so each extra event adds pass-through cost.
       @gate = TracePoint.new(:call, :return) { |trace| dispatch(trace) }
       @gate.enable
       at_exit do

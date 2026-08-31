@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# Each inferred test-environment signal produced one false positive and one false negative.
+# Only an explicit launch token can authorize statement evaluation.
 if ENV["BULLDOGGER_EXEC"] == "1" && ENV["BULLDOGGER_EXEC_OUT"] && ENV["BULLDOGGER_EXEC_FID"]
   require "json"
   require_relative "config"
@@ -107,6 +109,7 @@ if ENV["BULLDOGGER_EXEC"] == "1" && ENV["BULLDOGGER_EXEC_OUT"] && ENV["BULLDOGGE
       @target_depth = 0
       @mutex = Mutex.new
       @file = File.open("#{ENV.fetch('BULLDOGGER_EXEC_OUT')}-#{Process.pid}.jsonl", "a")
+      # This gate stays active for the full run, so each extra event adds pass-through cost.
       @gate = TracePoint.new(:call, :return) { |trace| dispatch(trace) }
       @gate.enable
       at_exit do

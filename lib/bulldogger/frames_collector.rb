@@ -4,6 +4,8 @@ module Bulldogger
   module FramesMethod
     module_function
 
+    # CRuby seeds String#hash per process, and compiled template method names embed it.
+    # Folding numeric segments keeps frame identities stable across isolated runs.
     def normalize(method_id)
       method_id.to_s.gsub(/_{2,3}-?\d{6,}_\d+/, "__HASH__")
     end
@@ -140,6 +142,8 @@ if ENV["BULLDOGGER_FRAMES_OUT"] && !ENV["BULLDOGGER_FRAMES_OUT"].empty?
       @counts = Hash.new(0)
       @raise_ordinal = 0
       @write_mutex = Mutex.new
+      # RUBYOPT loads this collector in spawned descendants too.
+      # Per-process files keep their event streams separate.
       @file = File.open("#{ENV.fetch('BULLDOGGER_FRAMES_OUT')}-#{Process.pid}.jsonl", "a")
       @trace = TracePoint.new(*EVENTS) { |trace| record(trace) }
       @trace.enable

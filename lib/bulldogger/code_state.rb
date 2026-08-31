@@ -9,6 +9,8 @@ module Bulldogger
   module CodeState
     module_function
 
+    # Git commands cost milliseconds, so callers compute this marker once per run.
+    # Raise hooks must not call this method.
     def capture(directory = Dir.pwd)
       sha, sha_status = git(directory, "rev-parse", "HEAD")
       return null_state unless sha_status.success?

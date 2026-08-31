@@ -4,6 +4,36 @@ require "test_helper"
 require_relative "../support/real_trace_point"
 
 class CaptureTest < Minitest::Test
+  def test_raise_ordinal_starts_at_the_test_checkpoint
+    Bulldogger.start
+    raise_numbered(0)
+    Bulldogger.begin_test
+
+    first = raise_numbered(1)
+    second = raise_numbered(2)
+
+    assert_equal 1, Bulldogger.snapshot_for(first)["raise_ordinal"]
+    assert_equal 2, Bulldogger.snapshot_for(second)["raise_ordinal"]
+  end
+
+  def test_raise_ordinal_is_nil_without_a_test_checkpoint
+    Bulldogger.start
+
+    exception = raise_numbered(0)
+
+    assert_nil Bulldogger.snapshot_for(exception)["raise_ordinal"]
+  end
+
+  def test_raise_ordinal_is_nil_after_the_test_window
+    Bulldogger.start
+    Bulldogger.begin_test
+    Bulldogger.end_test
+
+    exception = raise_numbered(0)
+
+    assert_nil Bulldogger.snapshot_for(exception)["raise_ordinal"]
+  end
+
   def test_locals_and_frame_position_appear_in_the_snapshot
     Bulldogger.start
 

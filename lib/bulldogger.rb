@@ -2,6 +2,8 @@
 
 require_relative "bulldogger/version"
 require_relative "bulldogger/config"
+require_relative "bulldogger/code_state"
+require_relative "bulldogger/rerun_command"
 require_relative "bulldogger/capture"
 require_relative "bulldogger/run"
 require_relative "bulldogger/evidence"
@@ -55,6 +57,14 @@ module Bulldogger
 
     def snapshot_for(exception)
       default.snapshot_for(exception)
+    end
+
+    def begin_test
+      default.begin_test
+    end
+
+    def end_test
+      default.end_test
     end
 
     def record_failure(exception:, test:)

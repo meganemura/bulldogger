@@ -17,11 +17,12 @@ module Bulldogger
   class Evidence
     SLUG_MAX_LENGTH = 80
 
-    def initialize(config:, run:, capture:, replay: nil)
+    def initialize(config:, run:, capture:, replay: nil, code_state: CodeState.capture)
       @config = config
       @run = run
       @capture = capture
       @replay = replay
+      @code_state = code_state
     end
 
     def record_failure(exception:, test:)
@@ -66,6 +67,10 @@ module Bulldogger
         "tool" => { "name" => "bulldogger", "version" => Bulldogger::VERSION },
         "captured_at" => Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "capture_mode" => snapshot ? snapshot["capture_mode"] : "missed",
+        "seed" => test && test[:seed],
+        "rerun_command" => RerunCommand.build(test),
+        "raise_ordinal" => snapshot && snapshot["raise_ordinal"],
+        "code_state" => @code_state,
         "test" => normalize_test(test),
         "exception" => build_exception_section(exception),
         "frames" => snapshot ? snapshot["frames"] : []

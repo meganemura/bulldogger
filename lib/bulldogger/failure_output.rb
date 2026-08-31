@@ -13,7 +13,7 @@ module Bulldogger
       evidence = JSON.parse(File.read(path))
       replay_path = evidence["replay"]
 
-      if evidence["capture_mode"] == "missed"
+      lines = if evidence["capture_mode"] == "missed"
         ["bulldogger evidence: #{path} (snapshot holds no frames)"]
       elsif replay_path
         ["bulldogger evidence: #{path}", replay_guidance(replay_path, evidence["replay_reproduced"])]
@@ -22,6 +22,8 @@ module Bulldogger
       else
         [missing_origin_line(path, replay_enabled)]
       end
+      lines << "bulldogger rerun: #{evidence['rerun_command']}" if evidence["rerun_command"]
+      lines
     rescue JSON::ParserError, SystemCallError
       ["bulldogger evidence: #{path}"]
     end

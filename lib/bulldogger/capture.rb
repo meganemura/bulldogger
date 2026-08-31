@@ -27,6 +27,8 @@ module Bulldogger
       @pending = Pending.new(config.max_pending)
       @trace_point = nil
       @start_mutex = Mutex.new
+      @raise_count = 0
+      @checkpoint = nil
     end
 
     def start
@@ -57,6 +59,16 @@ module Bulldogger
       @pending.get(exception)
     end
 
+    def begin_test
+      @checkpoint = @raise_count
+      self
+    end
+
+    def end_test
+      @checkpoint = nil
+      self
+    end
+
     def reason_for_missing(exception)
       return "capture_disabled" unless running?
       return "evicted" if @pending.evicted?(exception)
@@ -74,11 +86,13 @@ module Bulldogger
     # because even a NoMemoryError or SystemStackError surfacing from
     # our own code here must not propagate into the app's raise path.
     def handle_raise(tp)
+      @raise_count += 1
       exception = tp.raised_exception
       frames, frames_omitted = @frame_source.capture(tp)
       snapshot = {
         "capture_mode" => @frame_source.mode.to_s,
-        "frames" => frames
+        "frames" => frames,
+        "raise_ordinal" => @checkpoint && @raise_count - @checkpoint
       }
       # frames_omitted only appears when something was actually cut, so
       # its presence alone tells a reader "frames were dropped here" --

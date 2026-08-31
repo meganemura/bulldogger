@@ -18,6 +18,7 @@ module BulldoggerAcceptanceHelper
   # that point go unchecked.
   EVIDENCE_LINE = %r{bulldogger evidence: (/\S+\.json)}.freeze
   REPLAY_LINE = %r{bulldogger replay: (/\S+\.jsonl)}.freeze
+  RERUN_LINE = /bulldogger rerun: (.+)$/.freeze
 
   # Runs `bundle exec <cmd> <args>` from the repo root -- `cmd` is
   # "ruby" for minitest fixtures (a plain `ruby file.rb` is how
@@ -58,6 +59,10 @@ module BulldoggerAcceptanceHelper
 
   def replay_paths_from_stdout(text)
     text.scan(REPLAY_LINE).flatten
+  end
+
+  def rerun_commands_from_stdout(text)
+    text.scan(RERUN_LINE).flatten
   end
 
   def no_run_directory?(output_dir)

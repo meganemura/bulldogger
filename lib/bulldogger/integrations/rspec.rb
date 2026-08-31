@@ -26,7 +26,8 @@ module Bulldogger
         framework: "rspec",
         id: example.full_description,
         file: example.metadata[:file_path],
-        line: example.metadata[:line_number]
+        line: example.metadata[:line_number],
+        seed: ::RSpec.configuration.seed
       }
     end
 
@@ -51,6 +52,7 @@ end
   # The child records full execution. Failure hooks could start nested replay
   # and could change the isolated test result, so the child skips these hooks.
   config.before(:suite) { Bulldogger::RSpec.instance.start unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1" }
+  config.before(:each) { Bulldogger::RSpec.instance.begin_test unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1" }
 
   # after(:each), not a formatter hook: example.exception is already
   # set by the time this runs (Example#run assigns it before
@@ -66,6 +68,8 @@ end
 
     path = Bulldogger::RSpec.instance.record_failure(exception: exception, test: Bulldogger::RSpec.test_for(example))
     Bulldogger::RSpec.annotate!(exception, path) if path
+  ensure
+    Bulldogger::RSpec.instance.end_test unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
   end
 
   config.after(:suite) do

@@ -47,6 +47,10 @@ module Bulldogger
     # itself, so the test's id/file/line come from Result's own
     # klass/name/source_location rather than from re-deriving them.
     class Reporter < ::Minitest::AbstractReporter
+      def prerecord(_klass, _name)
+        Minitest.instance.begin_test
+      end
+
       def record(result)
         return if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
 
@@ -56,6 +60,8 @@ module Bulldogger
         exception = exception_for(failure)
         path = Minitest.instance.record_failure(exception: exception, test: test_for(result))
         annotate!(failure, path) if path
+      ensure
+        Minitest.instance.end_test unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
       end
 
       private
@@ -82,7 +88,8 @@ module Bulldogger
           framework: "minitest",
           id: "#{result.class_name}##{result.name}",
           file: file,
-          line: line
+          line: line,
+          seed: ::Minitest.seed
         }
       end
 

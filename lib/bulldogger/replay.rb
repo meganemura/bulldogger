@@ -4,6 +4,7 @@ require "open3"
 require "rbconfig"
 require "timeout"
 require_relative "application_frames"
+require_relative "rerun_command"
 
 module Bulldogger
   # Records one failed test again because a failure snapshot can miss the cause.
@@ -75,10 +76,10 @@ module Bulldogger
       lib = File.expand_path("..", __dir__)
       load_path = ["-I#{lib}", *forwarded_load_path_flags]
       if test[:framework] == "minitest"
-        [RbConfig.ruby, *load_path, "-rbulldogger/replay", test[:file], "-n", test[:id].to_s.split("#", 2).last]
+        [RbConfig.ruby, *load_path, "-rbulldogger/replay", test[:file], "-n", RerunCommand.minitest_method(test)]
       else
         rspec = Gem.bin_path("rspec-core", "rspec")
-        [RbConfig.ruby, *load_path, "-rbulldogger/replay", rspec, "#{test[:file]}:#{test[:line]}"]
+        [RbConfig.ruby, *load_path, "-rbulldogger/replay", rspec, RerunCommand.rspec_location(test)]
       end
     end
 

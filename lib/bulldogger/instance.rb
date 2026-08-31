@@ -26,6 +26,7 @@ module Bulldogger
     def start
       return self unless config.enabled
 
+      code_state
       capture.start
       self
     end
@@ -41,6 +42,14 @@ module Bulldogger
 
     def snapshot_for(exception)
       capture.snapshot_for(exception)
+    end
+
+    def begin_test
+      capture.begin_test
+    end
+
+    def end_test
+      capture.end_test
     end
 
     def record_failure(exception:, test:)
@@ -90,11 +99,15 @@ module Bulldogger
     end
 
     def evidence
-      @evidence ||= Evidence.new(config: config, run: run, capture: capture, replay: replay)
+      @evidence ||= Evidence.new(config: config, run: run, capture: capture, replay: replay, code_state: code_state)
     end
 
     def replay
       @replay ||= Replay.new(config: config)
+    end
+
+    def code_state
+      @code_state ||= CodeState.capture
     end
   end
 end

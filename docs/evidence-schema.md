@@ -11,6 +11,10 @@ The run directory also contains `index.json`, which lists the failure files.
 | `tool` | Object | always | Writer name and version. |
 | `captured_at` | String | always | UTC write time in `YYYY-MM-DDTHH:MM:SSZ` format. |
 | `capture_mode` | String | always | `capture_frames`, `degraded`, or `missed`. |
+| `seed` | Integer or null | always | Framework seed for the test run. |
+| `rerun_command` | String or null | always | Complete shell command for the selected test and seed. |
+| `raise_ordinal` | Integer or null | always | Raise count from the test start to this exception. |
+| `code_state` | Object | always | Git commit and dirty-state marker for this run. |
 | `test` | Object | always | Framework test data. |
 | `exception` | Object | always | Exception data. |
 | `frames` | Array | always | Frames from the raise site outward. |
@@ -25,11 +29,21 @@ The run directory also contains `index.json`, which lists the failure files.
 The `replay` key is absent when replay did not run. A `replay_skipped_reason` value distinguishes a deliberate skip because the frames already answer the question. Other causes include disabled replay, an unsupported framework, an exhausted `max_replays` limit, or a replay child timeout.
 `replay_reproduced` can be present with no `replay` field, when the child ran but wrote no trace file.
 
-The failure output keeps stable `bulldogger evidence:` and `bulldogger replay:` prefixes.
+The failure output keeps stable `bulldogger evidence:`, `bulldogger rerun:`, and `bulldogger replay:` prefixes.
 A parenthetical marks the file that contains the useful runtime data.
 The evidence line identifies available raising frames, missing origin frames, or a snapshot with no frames.
 The replay line identifies a reproduced failure or a passing isolated run.
+The rerun line gives a complete shell command when the framework supplies all required test data.
 Read [Replay evidence](#replay-evidence) for an example and where to read the trace.
+
+## Code state fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `git_sha` | String or null | Git commit at run start. |
+| `dirty_digest` | String or null | `clean` or the SHA256 digest of `git status --porcelain`. |
+
+Both values are `null` when Git or repository metadata is unavailable.
 
 ## Test fields
 

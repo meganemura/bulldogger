@@ -1,19 +1,25 @@
 # Changelog
 
-## 0.3.0
+## 0.3.1
 
 ### The re-run a failure needs is now an explicit verb, not an automatic one
 
 `0.2.0` reached the value behind an assertion failure by re-running the one
 failing test automatically, under full recording, in a child process. That
 worked, but it re-ran on every qualifying failure whether or not anyone
-asked, and it paid for a whole-run trace to answer one question. `0.3.0`
+asked, and it paid for a whole-run trace to answer one question. This release
 replaces that automatic replay with re-execution the agent drives, one
 question at a time, and retires the `record` verb along with it.
 
 This removes `record`, automatic replay, and their evidence keys, so it is
 a breaking change for a `0.2.0` user who read them. The failure snapshot and
 `probe` are unchanged.
+
+`0.3.0` carries the same work, but its release run stopped before publishing
+when a fixture pinned an older minitest than the suite now uses. Its tag
+stands at that commit and no gem was pushed, so `0.3.1` is the first
+published release of the re-execution verbs, with the fixture pinned to the
+minitest the suite loads.
 
 - **Four re-execution verbs join `probe`.** `frames` runs a test in a fresh
   process and indexes every call by a stable identifier, `fid`

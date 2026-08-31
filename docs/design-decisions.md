@@ -253,7 +253,8 @@ A trace that holds no application events fails that assertion, even when the `re
 The entries below this one define the re-execution design.
 They replace the earlier version 0.2 plan where the two conflict.
 Version 0.2.0 shipped automatic replay; this design replaces it and retires
-the record verb, so it is a breaking change and ships as 0.3.0.
+the record verb, so it is a breaking change and ships as 0.3.1 (0.3.0 was
+tagged but its release run stopped before publishing).
 
 Four concepts come from published work on agent debugging interfaces (arXiv:2604.24212):
 run the failing test again and collect statement-level detail for one selected frame during that run,

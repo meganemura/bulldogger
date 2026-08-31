@@ -54,26 +54,38 @@ if ENV["BULLDOGGER_EXEC"] == "1" && ENV["BULLDOGGER_EXEC_OUT"] && ENV["BULLDOGGE
           @target_reached = true
           @visits = 0
           @target_depth = 1
+          @evaluated = false
           iseq = RubyVM::InstructionSequence.of(trace.binding.eval("method(__method__)"))
           @line_trace = TracePoint.new(:line) { |event| evaluate(event) }
           @line_trace.enable(target: iseq)
         end
 
+        # The disable always happens here, driven by the outer :call/:return
+        # gate, never from inside @line_trace's own :line callback. A
+        # target-scoped TracePoint disabling itself mid-dispatch, on an
+        # ISeq stdlib Coverage is also instrumenting, segfaults the VM on
+        # ruby 4.0.6 in roughly half of runs -- reproduced standalone,
+        # no bulldogger code involved, in
+        # docs/repros/coverage-targeted-tracepoint-segfault; deferring
+        # to a separate, already-active TracePoint's callback does not.
         def leave
           return unless @line_trace
 
           @target_depth -= 1
           return unless @target_depth.zero?
 
-          write(
-            "type" => "evaluation_summary", "fid" => @fid, "line" => @target_line,
-            "line_visits_observed" => @visits, "target_visit" => @target_visit, "evaluated" => false
-          )
+          unless @evaluated
+            write(
+              "type" => "evaluation_summary", "fid" => @fid, "line" => @target_line,
+              "line_visits_observed" => @visits, "target_visit" => @target_visit, "evaluated" => false
+            )
+          end
           @line_trace.disable
           @line_trace = nil
         end
 
         def evaluate(trace)
+          return if @evaluated
           return unless trace.lineno == @target_line
 
           @visits += 1
@@ -85,9 +97,7 @@ if ENV["BULLDOGGER_EXEC"] == "1" && ENV["BULLDOGGER_EXEC_OUT"] && ENV["BULLDOGGE
           rescue Exception => error # rubocop:disable Lint/RescueException
             write("type" => "evaluation", "fid" => @fid, "line" => @target_line, "visit" => @target_visit, "exception_class" => error.class.name, "message" => @formatter.format(error.message))
           ensure
-            @line_trace.disable
-            @line_trace = nil
-            @target_depth = 0
+            @evaluated = true
           end
         end
 
@@ -115,6 +125,7 @@ if ENV["BULLDOGGER_EXEC"] == "1" && ENV["BULLDOGGER_EXEC_OUT"] && ENV["BULLDOGGE
       @observed_calls = 0
       @target_reached = false
       @target_depth = 0
+      @evaluated = false
       @mutex = Mutex.new
       @file = File.open("#{ENV.fetch('BULLDOGGER_EXEC_OUT')}-#{Process.pid}.jsonl", "a")
       # This gate stays active for the full run, so each extra event adds pass-through cost.

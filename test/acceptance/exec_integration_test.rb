@@ -29,6 +29,7 @@ class ExecIntegrationTest < Minitest::Test
     collector = File.expand_path("../../lib/bulldogger/exec_collector.rb", __dir__)
     base_path = File.join(output_dir, "exec")
     env = {
+      "BULLDOGGER_OUTPUT_DIR" => output_dir,
       "BULLDOGGER_EXEC_OUT" => base_path,
       "BULLDOGGER_EXEC_FID" => "#{path}:threshold#1",
       "BULLDOGGER_EXEC_LINE" => "9",

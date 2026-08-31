@@ -18,9 +18,6 @@ class RSpecIntegrationTest < Minitest::Test
     paths = evidence_paths_from_stdout(stdout)
     assert_equal 2, paths.size, "one evidence line per failing example, in stdout:\n#{stdout}"
     paths.each { |path| assert File.exist?(path), "#{path} named in stdout but missing on disk" }
-    replay_paths = replay_paths_from_stdout(stdout)
-    assert_equal 1, replay_paths.size
-    assert File.exist?(replay_paths.first)
 
     assertion_failure = evidence_for(output_dir, "computes the total")
     deep_raise = evidence_for(output_dir, "raises deep in app code")
@@ -35,12 +32,8 @@ class RSpecIntegrationTest < Minitest::Test
     assert_seeded_locals_and_redaction(deep_raise, at_frame_index: 0)
     assert_equal "app.rb", File.basename(deep_raise["frames"][0]["path"])
     assert_equal "capture_frames", deep_raise["capture_mode"]
-    replay_evidence = [assertion_failure, deep_raise].find { |record| record["replay"] }
-    assert_equal replay_paths.first, replay_evidence["replay"]
-    assert_equal true, replay_evidence["replay_reproduced"]
-    evidence_without_replay = [assertion_failure, deep_raise].find { |record| !record["replay"] }
-    assert_includes stdout, "bulldogger replay: #{replay_evidence["replay"]} (value was produced before the assertion raised)"
-    assert_includes stdout, "bulldogger evidence: #{evidence_path_for(output_dir, evidence_without_replay)} (raising method is in these frames)"
+    assert_includes stdout, "bulldogger evidence: #{evidence_path_for(output_dir, deep_raise)} (raising method is in these frames)"
+    assert_includes stdout, "bulldogger evidence: #{evidence_path_for(output_dir, assertion_failure)} (frames do not show where the value came from)"
 
     # Evidence is written per-failure, independent of suite end; this
     # is the check that Bulldogger.finish (index.json) and stop both
@@ -65,7 +58,7 @@ class RSpecIntegrationTest < Minitest::Test
     assert File.exist?(paths.first)
     evidence = evidence_for(output_dir, "raises an already-frozen exception")
     refute_nil evidence
-    assert_includes stdout, "bulldogger replay: #{evidence["replay"]} (value was produced before the assertion raised)"
+    assert_includes stdout, "bulldogger evidence: #{evidence_path_for(output_dir, evidence)} (frames do not show where the value came from)"
   end
 
   def test_green_suite_creates_no_run_directory

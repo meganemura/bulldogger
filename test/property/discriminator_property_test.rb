@@ -1,19 +1,15 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "bulldogger/record"
 require "json"
 require_relative "../fixtures/property/nested_raise"
 
 # The raise-exit discriminator (contract-verbs.md) is what tells "this
 # call returned nil" apart from "this call exited by raising" -- get
 # it wrong and the tool fabricates a return the method never made.
-# Hand-picked cases (probe_capture_test.rb, record_events_test.rb)
-# cover one level of nesting each; this property generalizes to
-# arbitrary nesting depth and arbitrary rescued/unrescued/re-raise
-# combinations, for both implementations that carry this logic
-# independently (Probe::RaiseTracker and Record::Session's own
-# counter).
+# probe_capture_test.rb covers one level of nesting; this property
+# generalizes to arbitrary nesting depth and arbitrary rescued/
+# unrescued/re-raise combinations, for Probe::RaiseTracker.
 class DiscriminatorPropertyTest < Minitest::Test
   Runner = NestedRaiseFixture::Runner
   Boom = NestedRaiseFixture::Boom
@@ -43,30 +39,6 @@ class DiscriminatorPropertyTest < Minitest::Test
       # never nil -- so a nonzero nil_count is exactly a fabricated
       # return.
       assert_equal 0, stats["returns"]["nil_count"]
-    end
-  end
-
-  def test_record_raise_exit_discriminator_matches_actual_outcomes_across_nested_calls
-    Hegel.test(test_cases: 20, suppress_health_check: [:too_slow]) do |tc|
-      specs = tc.draw(spec_list_generator)
-      nodes = specs.map { |wrappers, leaf| build_node(wrappers, leaf) }
-      # evaluate's own flag order (innermost node first) matches the
-      # order :return events fire in a real call stack unwind, and
-      # nodes are run strictly one after another, so concatenating in
-      # node order matches the trace's own seq order too.
-      expected_flags = nodes.flat_map { |node| evaluate(node).last }
-
-      path = Bulldogger::Record.run { nodes.each { |node| run_and_swallow(node) } }
-      # select/map, not filter_map: filter_map drops a block result of
-      # exactly `false` (it keeps only truthy results), which would
-      # silently discard every non-raised return event -- exactly the
-      # normal-return case this property most needs to see.
-      events = File.readlines(path).drop(1).map { |line| JSON.parse(line) }
-      actual_flags = events
-                     .select { |event| event["event"] == "return" && event["method"] == "NestedRaiseFixture::Runner.run" }
-                     .map { |event| event.key?("raised") }
-
-      assert_equal expected_flags, actual_flags
     end
   end
 

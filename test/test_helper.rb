@@ -40,7 +40,6 @@ module BulldoggerTestHelper
     Bulldogger.stop if Bulldogger.running?
     Bulldogger.instance_variable_set(:@default, nil)
     Bulldogger.config.output_dir = Dir.mktmpdir("bulldogger-test-")
-    Bulldogger.config.replay_on_failure = false
   end
 
   # Minitest 6 moved Object#stub into the separate minitest-mock gem;

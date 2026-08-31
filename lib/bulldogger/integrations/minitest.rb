@@ -5,7 +5,7 @@ require_relative "../../bulldogger"
 require_relative "../failure_output"
 
 module Bulldogger
-  # Connects Minitest failures to evidence and replay paths.
+  # Connects Minitest failures to evidence files.
   # It does not change test isolation, exception handling, or test results.
   module Minitest
     class << self
@@ -28,10 +28,6 @@ module Bulldogger
       return if @wired
 
       @wired = true
-      # The child records full execution. A second failure observer could start
-      # nested replay and could change the isolated test result.
-      return if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
-
       instance.start
       ::Minitest.reporter << Reporter.new(options[:io] || $stdout)
       ::Minitest.after_run do
@@ -69,8 +65,6 @@ module Bulldogger
       end
 
       def record(result)
-        return if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
-
         failure = result.failure
         return if failure.nil? || result.skipped?
 
@@ -78,7 +72,7 @@ module Bulldogger
         path = Minitest.instance.record_failure(exception: exception, test: test_for(result))
         annotate!(failure, path) if path
       ensure
-        Minitest.instance.end_test unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
+        Minitest.instance.end_test
         Bulldogger::FramesCollector.end_test if defined?(Bulldogger::FramesCollector)
         Bulldogger::FltCollector.end_test if defined?(Bulldogger::FltCollector)
         Bulldogger::ExecCollector.end_test if defined?(Bulldogger::ExecCollector)
@@ -123,7 +117,7 @@ module Bulldogger
       # exception (a re-raised literal, an app that freezes its errors)
       # never means a missing evidence line either.
       def annotate!(_failure, path)
-        lines = FailureOutput.lines(path, replay_enabled: Minitest.instance.config.replay_on_failure)
+        lines = FailureOutput.lines(path)
         synchronize { io.puts lines }
       end
     end

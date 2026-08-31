@@ -51,20 +51,13 @@ class InstanceTest < Minitest::Test
     refute default.running?
   end
 
-  def test_instance_probe_record_and_conversion_entry_points
+  def test_instance_probe_and_comparison_entry_points
     instance = Bulldogger::Instance.new
     instance.config.output_dir = Dir.mktmpdir("bulldogger-instance-")
 
     probe_path = instance.probe("InstanceTest#probe_target") { probe_target(1) }
-    trace_path = instance.record { probe_target(2) }
-    session = instance.record_start
-    probe_target(3)
-    second_trace_path = session.stop
 
     assert File.exist?(probe_path)
-    assert File.exist?(trace_path)
-    assert File.exist?(second_trace_path)
-    assert_nil instance.trace_to_sqlite(trace_path, "unused.db")
     assert_equal({ "identical" => true, "differences" => [] }, instance.probe_compare(probe_path, probe_path))
   end
 

@@ -229,53 +229,7 @@ class EvidenceTest < Minitest::Test
     refute File.symlink?(File.join(output_dir, "latest"))
   end
 
-  # attach_replay previously only wrote "replay_reproduced" for the
-  # false case, so every reproduced-failure replay left the key
-  # entirely absent (reading as JSON null to a caller) -- these two
-  # cover both branches directly against a stub Replay, faster and
-  # more precisely than driving a real child process end to end (see
-  # test/acceptance/replay_load_path_test.rb for that).
-  def test_replay_reproduced_true_is_written_when_the_child_reproduces_the_failure
-    trace_path = File.join(Bulldogger.config.output_dir, "trace-001.jsonl")
-    FileUtils.mkdir_p(File.dirname(trace_path))
-    File.write(trace_path, "")
-    evidence = evidence_with_replay(StubReplay.new(path: trace_path, reproduced: true))
-
-    data = JSON.parse(File.read(evidence.record_failure(exception: trigger_raise, test: minimal_test)))
-
-    assert_equal trace_path, data["replay"]
-    assert_equal true, data["replay_reproduced"]
-  end
-
-  def test_replay_reproduced_false_is_written_and_no_replay_path_is_named_when_the_trace_is_missing
-    evidence = evidence_with_replay(StubReplay.new(path: nil, reproduced: false))
-
-    data = JSON.parse(File.read(evidence.record_failure(exception: trigger_raise, test: minimal_test)))
-
-    assert_equal false, data["replay_reproduced"]
-    refute data.key?("replay")
-  end
-
   private
-
-  StubReplay = Struct.new(:path, :reproduced, keyword_init: true) do
-    def call(test:, run_dir:, frames:)
-      { path: path, reproduced: reproduced }
-    end
-  end
-
-  def evidence_with_replay(replay)
-    Bulldogger::Evidence.new(
-      config: Bulldogger.config,
-      run: Bulldogger::Run.new(config: Bulldogger.config),
-      capture: Bulldogger::Capture.new(config: Bulldogger.config),
-      replay: replay
-    )
-  end
-
-  def minimal_test
-    { framework: "minitest", id: "x", file: "f.rb", line: 1 }
-  end
 
   def trigger_raise
     raise "boom"

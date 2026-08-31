@@ -56,8 +56,7 @@ module Bulldogger
     # Runs block, which must call target_method (an UnboundMethod)
     # exactly once, and returns [call_double, return_double] built
     # from the real :call/:return events for that one invocation --
-    # the shape Probe::Session's dispatch, Probe::MethodStats, and
-    # Record::Session's on_call/on_return/build_*_event methods
+    # the shape Probe::Session's dispatch and Probe::MethodStats
     # receive.
     def capture_call_and_return(target_method)
       call_double = nil

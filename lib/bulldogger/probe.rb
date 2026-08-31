@@ -7,7 +7,7 @@ require_relative "probe/comparator"
 
 module Bulldogger
   # Targeted capture: instead of a snapshot at the moment a test fails
-  # (Capture) or a full trace of every call (Record), a probe watches
+  # (Capture), a probe watches
   # one or a few named methods across many calls and reports the
   # *shape* of what it saw -- argument and return classes, nil counts,
   # raise-exit counts, callers -- so a coding agent can answer

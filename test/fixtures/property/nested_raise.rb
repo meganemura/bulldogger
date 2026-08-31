@@ -7,7 +7,7 @@
 # produces, whether it should be classified as a raise-exit).
 #
 # Recursion goes through .run itself, not a separate helper: probing
-# or recording "NestedRaiseFixture::Runner.run" then observes one
+# "NestedRaiseFixture::Runner.run" then observes one
 # :call/:return pair per node in the tree, at every nesting depth --
 # exactly what stresses contract-verbs.md's raise-exit discriminator
 # (a checkpoint stack, keyed per call) rather than only its outermost

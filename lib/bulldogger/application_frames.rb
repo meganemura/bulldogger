@@ -3,8 +3,8 @@
 require "rbconfig"
 
 module Bulldogger
-  # Classifies frames by their source path for replay and failure guidance.
-  # It does not decide whether replay is enabled or permitted.
+  # Classifies frames by their source path for failure output guidance.
+  # It does not decide what a caller does with that classification.
   module ApplicationFrames
     module_function
 

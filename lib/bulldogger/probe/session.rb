@@ -105,7 +105,7 @@ module Bulldogger
       private
 
       # A one-line delegation, matching every other hook in this
-      # codebase (Capture, RaiseTracker, Record::Session): the block
+      # codebase (Capture, RaiseTracker): the block
       # given to TracePoint.new does no work itself, it only calls a
       # named method. That method is what a direct unit test calls
       # too, with a double standing in for tp, so this hook's own

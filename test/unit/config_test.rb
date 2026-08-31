@@ -3,38 +3,6 @@
 require "test_helper"
 
 class ConfigTest < Minitest::Test
-  def test_replay_defaults_and_environment_overrides
-    with_env("BULLDOGGER_REPLAY" => nil, "BULLDOGGER_MAX_REPLAYS" => nil) do
-      config = Bulldogger::Config.new
-      assert_equal true, config.replay_on_failure
-      assert_equal 1, config.max_replays
-    end
-
-    with_env("BULLDOGGER_REPLAY" => "0", "BULLDOGGER_MAX_REPLAYS" => "3") do
-      config = Bulldogger::Config.new
-      assert_equal false, config.replay_on_failure
-      assert_equal 3, config.max_replays
-    end
-
-    with_env("BULLDOGGER_REPLAY" => "1") do
-      assert_equal true, Bulldogger::Config.new.replay_on_failure
-    end
-
-    with_env("BULLDOGGER_REPLAY" => "always") do
-      assert_equal :always, Bulldogger::Config.new.replay_on_failure
-    end
-  end
-
-  # Integer(str, 10) raises ArgumentError for anything that is not a
-  # base-10 integer literal -- a typo'd env var must fall back to the
-  # documented default, not crash Config.new for every test in the
-  # suite that follows it.
-  def test_an_unparseable_max_replays_env_var_falls_back_to_the_default
-    with_env("BULLDOGGER_MAX_REPLAYS" => "not-a-number") do
-      assert_equal 1, Bulldogger::Config.new.max_replays
-    end
-  end
-
   def test_bulldogger_disable_env_var_disables
     with_env("BULLDOGGER_DISABLE" => "1", "BULLDOGGER_DISABLED" => nil) do
       assert_equal false, Bulldogger::Config.new.enabled

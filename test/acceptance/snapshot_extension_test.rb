@@ -20,7 +20,7 @@ class SnapshotExtensionTest < Minitest::Test
   private
 
   def assert_rerun(framework_command, fixture, seed:)
-    stdout, _stderr, status, output_dir = run_fixture(framework_command, fixture, "--seed", seed.to_s, env: { "BULLDOGGER_REPLAY" => "0" })
+    stdout, _stderr, status, output_dir = run_fixture(framework_command, fixture, "--seed", seed.to_s)
     refute status.success?
     evidence = evidence_records(output_dir).fetch(0)
     assert_equal seed, evidence["seed"]
@@ -31,7 +31,7 @@ class SnapshotExtensionTest < Minitest::Test
 
     rerun_dir = Dir.mktmpdir("bulldogger-rerun-")
     rerun_stdout, rerun_stderr, rerun_status = Open3.capture3(
-      { "BULLDOGGER_OUTPUT_DIR" => rerun_dir, "BULLDOGGER_REPLAY" => "0" },
+      { "BULLDOGGER_OUTPUT_DIR" => rerun_dir },
       command,
       chdir: ROOT
     )

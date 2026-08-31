@@ -76,18 +76,6 @@ module Bulldogger
       Probe.compare(path_a, path_b)
     end
 
-    def record(&block)
-      Record.run(instance: self, &block)
-    end
-
-    def record_start
-      Record.start(instance: self)
-    end
-
-    def trace_to_sqlite(jsonl_path, db_path)
-      Record.to_sqlite(jsonl_path, db_path)
-    end
-
     private
 
     def capture
@@ -99,11 +87,7 @@ module Bulldogger
     end
 
     def evidence
-      @evidence ||= Evidence.new(config: config, run: run, capture: capture, replay: replay, code_state: code_state)
-    end
-
-    def replay
-      @replay ||= Replay.new(config: config)
+      @evidence ||= Evidence.new(config: config, run: run, capture: capture, code_state: code_state)
     end
 
     def code_state

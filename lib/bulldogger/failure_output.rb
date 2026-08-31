@@ -9,18 +9,15 @@ module Bulldogger
   module FailureOutput
     module_function
 
-    def lines(path, replay_enabled: true)
+    def lines(path)
       evidence = JSON.parse(File.read(path))
-      replay_path = evidence["replay"]
 
       lines = if evidence["capture_mode"] == "missed"
         ["bulldogger evidence: #{path} (snapshot holds no frames)"]
-      elsif replay_path
-        ["bulldogger evidence: #{path}", replay_guidance(replay_path, evidence["replay_reproduced"])]
       elsif ApplicationFrames.available?(evidence.dig("test", "file"), evidence.fetch("frames", []))
         ["bulldogger evidence: #{path} (raising method is in these frames)"]
       else
-        [missing_origin_line(path, replay_enabled)]
+        [missing_origin_line(path)]
       end
       lines << "bulldogger rerun: #{evidence['rerun_command']}" if evidence["rerun_command"]
       lines
@@ -28,19 +25,8 @@ module Bulldogger
       ["bulldogger evidence: #{path}"]
     end
 
-    def replay_guidance(path, reproduced)
-      reason = if reproduced == false
-                 "test passed alone; this trace shows the passing run"
-               else
-                 "value was produced before the assertion raised"
-               end
-      "bulldogger replay: #{path} (#{reason})"
-    end
-
-    def missing_origin_line(path, replay_enabled)
-      reason = "frames do not show where the value came from"
-      reason += "; set BULLDOGGER_REPLAY=1" unless replay_enabled
-      "bulldogger evidence: #{path} (#{reason})"
+    def missing_origin_line(path)
+      "bulldogger evidence: #{path} (frames do not show where the value came from)"
     end
   end
 end

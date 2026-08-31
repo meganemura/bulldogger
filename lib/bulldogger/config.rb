@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Bulldogger
-  # Sets bounded runtime policy for capture, replay, redaction, and file output.
-  # It does not start capture or replay work.
+  # Sets bounded runtime policy for capture, redaction, and file output.
+  # It does not start capture work.
   # Environment overrides let a child change policy without app file changes.
   class Config
     DEFAULT_REDACT_PATTERNS = [
@@ -19,7 +19,7 @@ module Bulldogger
 
     attr_accessor :enabled, :output_dir, :max_frames, :max_locals,
                    :max_value_length, :max_pending, :max_samples, :redact_patterns,
-                   :frame_source, :replay_on_failure, :max_replays, :replay_timeout
+                   :frame_source
 
     def initialize
       @enabled = true
@@ -31,11 +31,6 @@ module Bulldogger
       @max_samples = 10
       @redact_patterns = DEFAULT_REDACT_PATTERNS.dup
       @frame_source = :auto
-      # Failure-only replay keeps full recording away from green runs, where
-      # measurement showed a runtime cost of about sixty times.
-      @replay_on_failure = true
-      @max_replays = 1
-      @replay_timeout = 60
       apply_env_overrides
     end
 
@@ -55,14 +50,6 @@ module Bulldogger
       # for first, and a kill switch that silently ignores the natural
       # spelling is worse than one that accepts an extra name.
       @enabled = false if ENV["BULLDOGGER_DISABLE"] == "1" || ENV["BULLDOGGER_DISABLED"] == "1"
-      case ENV["BULLDOGGER_REPLAY"]
-      when "0" then @replay_on_failure = false
-      when "1" then @replay_on_failure = true
-      when "always" then @replay_on_failure = :always
-      end
-      @max_replays = Integer(ENV["BULLDOGGER_MAX_REPLAYS"], 10) if ENV["BULLDOGGER_MAX_REPLAYS"]
-    rescue ArgumentError
-      @max_replays = 1
     end
   end
 end

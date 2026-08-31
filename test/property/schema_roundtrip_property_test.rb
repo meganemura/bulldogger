@@ -1,17 +1,15 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "bulldogger/record"
 require "json"
 
-# Every value that reaches an evidence file or a trace line has
-# already passed through Formatter (a bounded String), so nothing in
-# either JSON document should be lossy to write and read back. Draws
-# arbitrary values into a real captured local (evidence) and a real
-# recorded argument (JSONL), then checks that reading a real, written
-# file back and running it through one more generate/parse cycle
-# reproduces exactly the same Ruby structure -- the round trip
-# contract.md and contract-verbs.md both hold evidence and JSONL to.
+# Every value that reaches an evidence file has already passed through
+# Formatter (a bounded String), so nothing in that JSON document should
+# be lossy to write and read back. Draws arbitrary values into a real
+# captured local, then checks that reading a real, written file back
+# and running it through one more generate/parse cycle reproduces
+# exactly the same Ruby structure -- the round trip contract.md holds
+# evidence to.
 class SchemaRoundtripPropertyTest < Minitest::Test
   def test_evidence_json_survives_a_second_generate_parse_cycle
     Hegel.test(test_cases: 40) do |tc|
@@ -27,20 +25,6 @@ class SchemaRoundtripPropertyTest < Minitest::Test
       parsed_twice = JSON.parse(JSON.generate(parsed_once))
 
       assert_equal parsed_once, parsed_twice
-    end
-  end
-
-  def test_every_record_jsonl_line_survives_a_second_generate_parse_cycle
-    Hegel.test(test_cases: 25) do |tc|
-      value = tc.draw(arbitrary_value_generator, label: "value")
-
-      path = Bulldogger::Record.run { touch_value(value) }
-
-      File.readlines(path).each do |line|
-        parsed_once = JSON.parse(line)
-        parsed_twice = JSON.parse(JSON.generate(parsed_once))
-        assert_equal parsed_once, parsed_twice
-      end
     end
   end
 
@@ -71,10 +55,5 @@ class SchemaRoundtripPropertyTest < Minitest::Test
     raise "boom"
   rescue RuntimeError => e
     e
-  end
-
-  def touch_value(value)
-    seeded = value
-    seeded
   end
 end

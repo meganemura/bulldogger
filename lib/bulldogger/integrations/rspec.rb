@@ -5,7 +5,7 @@ require_relative "../../bulldogger"
 require_relative "../failure_output"
 
 module Bulldogger
-  # Connects RSpec failures to evidence and replay paths.
+  # Connects RSpec failures to evidence files.
   # It does not control test execution, formatter behavior, or test results.
   module RSpec
     class << self
@@ -43,7 +43,7 @@ module Bulldogger
     # missing evidence line.
     def self.annotate!(exception, path)
       original = exception.message
-      lines = FailureOutput.lines(path, replay_enabled: instance.config.replay_on_failure)
+      lines = FailureOutput.lines(path)
       suffix = "\n#{lines.join("\n")}"
       exception.define_singleton_method(:message) { "#{original}#{suffix}" }
     rescue FrozenError
@@ -53,14 +53,12 @@ module Bulldogger
 end
 
 ::RSpec.configure do |config|
-  # The child records full execution. Failure hooks could start nested replay
-  # and could change the isolated test result, so the child skips these hooks.
-  config.before(:suite) { Bulldogger::RSpec.instance.start unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1" }
+  config.before(:suite) { Bulldogger::RSpec.instance.start }
   config.before(:each) do
     Bulldogger::FramesCollector.begin_test if defined?(Bulldogger::FramesCollector)
     Bulldogger::FltCollector.begin_test if defined?(Bulldogger::FltCollector)
     Bulldogger::ExecCollector.begin_test if defined?(Bulldogger::ExecCollector)
-    Bulldogger::RSpec.instance.begin_test unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
+    Bulldogger::RSpec.instance.begin_test
   end
 
   # after(:each), not a formatter hook: example.exception is already
@@ -70,23 +68,19 @@ end
   # RSpec's own formatters render the failure, or the added line would
   # never reach the user's terminal.
   config.after(:each) do |example|
-    next if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
-
     exception = example.exception
     next unless exception
 
     path = Bulldogger::RSpec.instance.record_failure(exception: exception, test: Bulldogger::RSpec.test_for(example))
     Bulldogger::RSpec.annotate!(exception, path) if path
   ensure
-    Bulldogger::RSpec.instance.end_test unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
+    Bulldogger::RSpec.instance.end_test
     Bulldogger::FramesCollector.end_test if defined?(Bulldogger::FramesCollector)
     Bulldogger::FltCollector.end_test if defined?(Bulldogger::FltCollector)
     Bulldogger::ExecCollector.end_test if defined?(Bulldogger::ExecCollector)
   end
 
   config.after(:suite) do
-    next if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
-
     Bulldogger::RSpec.instance.finish
     Bulldogger::RSpec.instance.stop
   end

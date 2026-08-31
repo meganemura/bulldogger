@@ -45,7 +45,7 @@ class IntegrationReplayAnnotationTest < Minitest::Test
 
       Bulldogger::RSpec.annotate!(exception, path)
 
-      assert_equal "boom\nbulldogger evidence: #{path} (frames do not show where the value came from; set BULLDOGGER_REPLAY=1)", exception.message
+      assert_equal "boom\nbulldogger evidence: #{path} (frames do not show where the value came from)", exception.message
     end
   end
 end

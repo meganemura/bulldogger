@@ -38,7 +38,7 @@ class RecordSessionTest < Minitest::Test
   end
 
   def test_header_omits_skill_when_the_skill_is_missing
-    Bulldogger::Skill.stub(:file, nil) do
+    stub_singleton_method(Bulldogger::Skill, :file, nil) do
       refute @session.send(:header).key?("skill")
     end
   end

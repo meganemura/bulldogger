@@ -17,7 +17,7 @@ module Bulldogger
       raise ArgumentError, "flt requires a command after --" if command.empty?
 
       code_state = CodeState.capture(target.root)
-      return 1 unless ExecutionTarget.acceptable?(target, index: index, code_state: code_state, verb: "flt", stderr: stderr)
+      return 1 unless ExecutionTarget.acceptable?(target, index: index, code_state: code_state, verb: "flt", stderr: stderr, fid: fid)
 
       output_dir = File.expand_path(output_dir)
       FileUtils.mkdir_p(output_dir)

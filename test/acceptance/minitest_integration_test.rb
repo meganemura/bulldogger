@@ -98,13 +98,11 @@ class MinitestIntegrationTest < Minitest::Test
     end
   end
 
-  # Appending the evidence line has two tiers: tag the failure
-  # exception's own #message, or fall back to printing the line
-  # directly when the exception is frozen and can't take a singleton
-  # method. A regular red-suite failure never reaches the fallback
-  # (Minitest wraps an app's raise in a freshly `.new`'d, unfrozen
-  # UnexpectedError), so exercising it needs its own fixture that
-  # raises an already-frozen Minitest::Assertion directly.
+  # The reporter prints the evidence line to its own io and never
+  # touches the failure exception, so a frozen exception (one that
+  # can't take a singleton method) is not a special case -- this
+  # fixture raises an already-frozen Minitest::Assertion directly to
+  # keep that guarantee under test rather than assumed.
   def test_frozen_failure_falls_back_to_a_printed_stdout_line
     stdout, _stderr, status, output_dir = run_fixture("ruby", FROZEN_FIXTURE)
 

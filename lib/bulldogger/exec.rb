@@ -22,7 +22,7 @@ module Bulldogger
       raise ArgumentError, "exec requires a positive visit" unless visit.positive?
 
       code_state = CodeState.capture(target.root)
-      return 1 unless ExecutionTarget.acceptable?(target, index: index, code_state: code_state, verb: "exec", stderr: stderr)
+      return 1 unless ExecutionTarget.acceptable?(target, index: index, code_state: code_state, verb: "exec", stderr: stderr, fid: fid)
 
       output_dir = File.expand_path(output_dir)
       FileUtils.mkdir_p(output_dir)

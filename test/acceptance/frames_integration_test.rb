@@ -44,6 +44,22 @@ class FramesIntegrationTest < Minitest::Test
     FileUtils.remove_entry(output_dir) if output_dir && Dir.exist?(output_dir)
   end
 
+  # RSpec's `it "..." do...end` block sits outside any def, so
+  # TracePoint#method_id is nil for its b_call/b_return -- the case
+  # that used to leave the fid's method segment empty ("path:#1").
+  def test_block_frames_outside_any_method_get_a_non_empty_fid
+    command = ["bundle", "exec", "rspec", "test/fixtures/frames/rspec_frames_spec.rb", "--seed", "12345"]
+    stdout, stderr, status, output_dir = run_frames(*command)
+
+    assert status.success?, stderr
+    frames = read_json_lines(frames_path(stdout)).select { |record| record["type"] == "frame" }
+    refute_empty frames
+    frames.each { |frame| refute_empty frame.fetch("method"), "empty method in fid #{frame['fid']}" }
+    assert frames.any? { |frame| frame["event"] == "b_call" && frame["method"] == "block" }
+  ensure
+    FileUtils.remove_entry(output_dir) if output_dir && Dir.exist?(output_dir)
+  end
+
   def test_application_fids_are_stable_across_runs
     command = ["bundle", "exec", "ruby", "-Itest", "test/fixtures/frames/minitest_frames_test.rb", "--seed", "12345"]
     first_stdout, _first_stderr, first_status, first_dir = run_frames(*command)

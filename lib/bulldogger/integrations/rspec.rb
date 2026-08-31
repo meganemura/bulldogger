@@ -31,12 +31,16 @@ module Bulldogger
       }
     end
 
-    # Mirrors the minitest integration's annotate!: tag the exception's
-    # own #message first, so the evidence line sits inside the same
-    # text RSpec's own formatter already prints for this failure. A
-    # frozen exception can't take a singleton method; fall back to
-    # printing the line directly so a frozen exception never means a
-    # silently missing evidence line.
+    # Tags the exception's own #message, so the evidence line sits
+    # inside the same text RSpec's own formatter prints for this
+    # failure. This after(:each) hook runs synchronously inside
+    # Example#run, before RSpec's reporter notifies any formatter, so
+    # the rewrite is guaranteed to land before anything reads the
+    # message -- unlike Minitest's CompositeReporter, RSpec has no
+    # second observer that could print the failure first. A frozen
+    # exception can't take a singleton method; fall back to printing
+    # the line directly so a frozen exception never means a silently
+    # missing evidence line.
     def self.annotate!(exception, path)
       original = exception.message
       lines = FailureOutput.lines(path, replay_enabled: instance.config.replay_on_failure)

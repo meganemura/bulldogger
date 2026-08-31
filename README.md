@@ -41,8 +41,8 @@ The CLI has these subcommands:
 ```text
 bulldogger frames -- command...
 bulldogger preflight -- command...
-bulldogger flt path:method#k [--index path] -- command...
-bulldogger exec path:method#k --line N [--visit K] --statement text [--index path] -- command...
+bulldogger flt 'path:method#k' [--index path] -- command...
+bulldogger exec 'path:method#k' --line N [--visit K] --statement text [--index path] -- command...
 bulldogger skill path
 bulldogger version
 bulldogger --version
@@ -185,7 +185,7 @@ Both verbs accept application frame identifiers only.
 Pass an application `fid` and the same isolated command:
 
 ```sh
-bulldogger flt test/fixtures/flt/minitest_flt_test.rb:branchy#1 -- bundle exec ruby -Itest test/fixtures/flt/minitest_flt_test.rb --seed 12345
+bulldogger flt 'test/fixtures/flt/minitest_flt_test.rb:branchy#1' -- bundle exec ruby -Itest test/fixtures/flt/minitest_flt_test.rb --seed 12345
 ```
 
 ```text
@@ -205,7 +205,7 @@ Use `--index path` to require the index and rerun to have the same code-state ma
 Address one line visit inside an application frame:
 
 ```sh
-bulldogger exec test/fixtures/exec/minitest_exec_test.rb:threshold#1 --line 9 --statement 'binding.local_variable_set(:result, 10)' -- bundle exec ruby -Itest test/fixtures/exec/minitest_exec_test.rb --seed 12345 -n test_injection_can_change_the_outcome
+bulldogger exec 'test/fixtures/exec/minitest_exec_test.rb:threshold#1' --line 9 --statement 'binding.local_variable_set(:result, 10)' -- bundle exec ruby -Itest test/fixtures/exec/minitest_exec_test.rb --seed 12345 -n test_injection_can_change_the_outcome
 ```
 
 ```text

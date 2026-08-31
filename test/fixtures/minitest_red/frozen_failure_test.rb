@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-# A failure exception that is already frozen when it's raised: the
-# reporter's usual move (tag the exception's own #message with the
-# evidence path) raises FrozenError on an object like this, and must
-# fall back to printing the line itself instead of losing it.
+# A failure exception that is already frozen when it's raised. The
+# reporter prints the evidence line to its own io and never mutates
+# the exception, so this fixture guards that a frozen failure still
+# gets its line.
 require "bulldogger/minitest"
 require "minitest/autorun"
 

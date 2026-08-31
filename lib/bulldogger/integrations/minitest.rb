@@ -24,7 +24,7 @@ module Bulldogger
     # accessor is nil outside that window). That is why Bulldogger.start
     # and the reporter wiring happen here and not at require time --
     # nothing has run yet, so nothing needs the TracePoint before this.
-    def self.minitest_plugin_init(_options)
+    def self.minitest_plugin_init(options)
       return if @wired
 
       @wired = true
@@ -33,7 +33,7 @@ module Bulldogger
       return if ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
 
       instance.start
-      ::Minitest.reporter << Reporter.new
+      ::Minitest.reporter << Reporter.new(options[:io] || $stdout)
       ::Minitest.after_run do
         instance.finish
         instance.stop
@@ -47,6 +47,20 @@ module Bulldogger
     # itself, so the test's id/file/line come from Result's own
     # klass/name/source_location rather than from re-deriving them.
     class Reporter < ::Minitest::AbstractReporter
+      attr_reader :io
+
+      # AbstractReporter#initialize takes no arguments; this reporter
+      # keeps its own io so #annotate! can print to it directly instead
+      # of depending on the failure's own #message reaching the runner's
+      # output. A Rails-wrapped Minitest 6 run proved that dependency
+      # false: Rails' SuppressedSummaryReporter skips the deferred
+      # failure printout, and its own inline reporter runs before this
+      # one, so a rewritten #message never surfaces anywhere.
+      def initialize(io = $stdout)
+        super()
+        @io = io
+      end
+
       def prerecord(_klass, _name)
         Bulldogger::FramesCollector.begin_test if defined?(Bulldogger::FramesCollector)
         Bulldogger::FltCollector.begin_test if defined?(Bulldogger::FltCollector)
@@ -99,20 +113,18 @@ module Bulldogger
         }
       end
 
-      # First choice: tag the failure exception's own #message, so the
-      # one line sits inside the same text Minitest's SummaryReporter
-      # already prints for this failure. A raised exception can be
-      # frozen (a re-raised literal, an app that freezes its errors),
-      # and #define_singleton_method on a frozen object raises --
-      # fall back to printing the line ourselves so a frozen exception
-      # never means a silently missing evidence line.
-      def annotate!(failure, path)
-        original = failure.message
+      # Prints straight to this reporter's own io rather than tagging
+      # the failure exception's own #message: whether a rewritten
+      # #message reaches the runner's output depends on which other
+      # reporters are installed and in what order, and a host that
+      # wraps Minitest (Rails' SuppressedSummaryReporter, run before
+      # this reporter under Minitest 6) can drop it silently. Printing
+      # here needs nothing from the failure object, so a frozen
+      # exception (a re-raised literal, an app that freezes its errors)
+      # never means a missing evidence line either.
+      def annotate!(_failure, path)
         lines = FailureOutput.lines(path, replay_enabled: Minitest.instance.config.replay_on_failure)
-        suffix = "\n#{lines.join("\n")}"
-        failure.define_singleton_method(:message) { "#{original}#{suffix}" }
-      rescue FrozenError
-        $stdout.puts lines
+        synchronize { io.puts lines }
       end
     end
   end

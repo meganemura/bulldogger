@@ -42,6 +42,26 @@ module BulldoggerTestHelper
     Bulldogger.config.output_dir = Dir.mktmpdir("bulldogger-test-")
     Bulldogger.config.replay_on_failure = false
   end
+
+  # Minitest 6 moved Object#stub into the separate minitest-mock gem;
+  # adding that dependency was not asked for, so the one or two call
+  # sites that need a temporary singleton method write it directly.
+  # define_singleton_method with a bound Method restores the original
+  # implementation rather than merely calling it. Both redefinitions
+  # are intentional, so -w's "method redefined" warning is suppressed
+  # around them rather than left to print on every run.
+  def stub_singleton_method(receiver, name, value)
+    original = receiver.method(name)
+    previous_verbose = $VERBOSE
+    $VERBOSE = nil
+    receiver.define_singleton_method(name) { |*| value }
+    $VERBOSE = previous_verbose
+    yield
+  ensure
+    $VERBOSE = nil
+    receiver.define_singleton_method(name, original)
+    $VERBOSE = previous_verbose
+  end
 end
 
 module Minitest

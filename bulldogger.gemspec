@@ -41,7 +41,7 @@ Gem::Specification.new do |spec|
   # app that adopts bulldogger adds nothing to its own dependency
   # graph. `debug` is development-only, below.
   spec.add_development_dependency "rake", "= 13.4.2"
-  spec.add_development_dependency "minitest", "= 5.27.0"
+  spec.add_development_dependency "minitest", "= 6.0.6"
   spec.add_development_dependency "rspec", "= 3.13.2"
   spec.add_development_dependency "debug", "= 1.11.1"
   spec.add_development_dependency "hegeltest", "= 0.1.0"

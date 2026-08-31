@@ -43,8 +43,8 @@ CLI には次のサブコマンドがあります。
 ```text
 bulldogger frames -- command...
 bulldogger preflight -- command...
-bulldogger flt path:method#k [--index path] -- command...
-bulldogger exec path:method#k --line N [--visit K] --statement text [--index path] -- command...
+bulldogger flt 'path:method#k' [--index path] -- command...
+bulldogger exec 'path:method#k' --line N [--visit K] --statement text [--index path] -- command...
 bulldogger skill path
 bulldogger version
 bulldogger --version
@@ -187,7 +187,7 @@ preflight が `deterministic` を表示した場合に限って、`flt` また�
 アプリケーションの `fid` と同じ分離コマンドを渡します。
 
 ```sh
-bulldogger flt test/fixtures/flt/minitest_flt_test.rb:branchy#1 -- bundle exec ruby -Itest test/fixtures/flt/minitest_flt_test.rb --seed 12345
+bulldogger flt 'test/fixtures/flt/minitest_flt_test.rb:branchy#1' -- bundle exec ruby -Itest test/fixtures/flt/minitest_flt_test.rb --seed 12345
 ```
 
 ```text
@@ -207,7 +207,7 @@ bulldogger result: pass (exit 0)
 アプリケーションフレーム内の 1 回の行訪問を指定します。
 
 ```sh
-bulldogger exec test/fixtures/exec/minitest_exec_test.rb:threshold#1 --line 9 --statement 'binding.local_variable_set(:result, 10)' -- bundle exec ruby -Itest test/fixtures/exec/minitest_exec_test.rb --seed 12345 -n test_injection_can_change_the_outcome
+bulldogger exec 'test/fixtures/exec/minitest_exec_test.rb:threshold#1' --line 9 --statement 'binding.local_variable_set(:result, 10)' -- bundle exec ruby -Itest test/fixtures/exec/minitest_exec_test.rb --seed 12345 -n test_injection_can_change_the_outcome
 ```
 
 ```text

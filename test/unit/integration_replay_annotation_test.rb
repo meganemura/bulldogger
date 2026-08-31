@@ -8,6 +8,15 @@ require "bulldogger/integrations/rspec"
 # A fixture cannot remove that file between the write and the annotation,
 # so this test uses an unreadable path to cover the fallback guidance.
 class IntegrationReplayAnnotationTest < Minitest::Test
+  def test_minitest_reporter_prints_failure_output_to_its_io
+    io = StringIO.new
+    reporter = Bulldogger::Minitest::Reporter.new(io)
+
+    reporter.send(:annotate!, RuntimeError.new("boom"), "/nonexistent/evidence.json")
+
+    assert_equal "bulldogger evidence: /nonexistent/evidence.json\n", io.string
+  end
+
   def test_rspec_annotate_falls_back_to_the_evidence_only_suffix_for_an_unreadable_evidence_file
     exception = RuntimeError.new("boom")
 

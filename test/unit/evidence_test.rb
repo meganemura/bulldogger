@@ -37,7 +37,7 @@ class EvidenceTest < Minitest::Test
   end
 
   def test_record_failure_omits_skill_when_the_skill_is_missing
-    Bulldogger::Skill.stub(:file, nil) do
+    stub_singleton_method(Bulldogger::Skill, :file, nil) do
       path = Bulldogger.record_failure(
         exception: trigger_raise,
         test: { framework: "minitest", id: "x", file: "f.rb", line: 1 }

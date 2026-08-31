@@ -394,3 +394,25 @@ An index from edited code would otherwise send the agent to line numbers that no
 The two streams disagree on whole sequences, so the bridge uses a coordinate that both runs compute the same way: the count of `:raise` events since the test started, plus the raise's path, line, and exception class.
 A process-wide raise count failed this role in measurement, because earlier tests in the suite advance it.
 The test-scoped count survived the move from a suite run to an isolated run in measurement, with the caveat that a fresh process may rescue additional raises during lazy loading; the implementation verifies this on real suites before it relies on the ordinal.
+
+A dogfooding run on rubygems.org performed that verification and sharpened the decision (2026-08-31, second entry).
+The suite snapshot recorded its failure at raise ordinal 1, and two isolated frames runs both placed the same failure at ordinal 14, behind thirteen rescued lazy-loading raises that only a fresh process performs.
+The two isolated runs agreed with each other down to the exception-class tally.
+The bridge therefore treats the frames run's ordinal as the authoritative address, and the snapshot's role stays at the entry point: the test name and the rerun command.
+The snapshot's (path, line, exception class) triple serves as a cross-check.
+When the isolated reproduction fails at a different location or class than the snapshot recorded, the tool reports that mismatch as a named diagnosis — the suite failure reproduced with a different face, which signals test-order dependence or state contamination — in the same style preflight uses to name a divergence.
+
+## Print evidence lines through the reporter's own io (2026-08-31)
+
+A dogfooding run against a real Rails application's test suite, under Minitest 6, showed the evidence file written correctly but its failure-message annotation never reaching output.
+Minitest 6 dropped the runtime plugin scan that Minitest 5 ran inside `Minitest.run`; Rails now loads its own plugin at require time instead.
+That flips registration order ahead of bulldogger's: Rails' own reporter prints each failure inline before bulldogger's reporter tags the exception's `#message`, and Rails' summary reporter skips the deferred printout that would otherwise show the tag.
+Minitest 5 ran the plugin scan late enough that bulldogger's plugin registered first, so the tag landed before Rails' inline print and the gap stayed hidden.
+The Minitest reporter now prints the evidence line straight to its own io during `#record`, independent of any other reporter's position and of the exception's frozen state.
+
+## Name every block frame with a fid every verb can act on (2026-08-31)
+
+`TracePoint#method_id` is nil for a block that sits outside any def (a spec's `it do...end`, a class-body block), so the frames collector built a fid with an empty method segment for it.
+A block nested inside a def keeps its enclosing method's name instead, so its fid reads as an ordinary second call and is not distinguishable by text alone.
+Neither shape is a valid `flt`/`exec` target: both verbs gate on `:call`/`:return` only, because targeting needs a `Method` object that a block does not have, so either fid let the child process run to completion with no trace.
+The collector now names a nameless block "block", and `flt`/`exec` read the index's own event type for the target fid, refusing a block frame and naming the nearest ancestor frame that is an application call.

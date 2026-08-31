@@ -88,6 +88,28 @@ class FltIntegrationTest < Minitest::Test
     FileUtils.remove_entry(output_dir) if output_dir && Dir.exist?(output_dir)
   end
 
+  # branchy's own [2].each block keeps "branchy" as its method_id (it
+  # sits inside a def), so its fid ("branchy#2") looks like an ordinary
+  # call by pattern alone -- flt must tell the two apart from the
+  # index's "event" field and name branchy#1, the call that encloses it.
+  def test_block_target_refuses_and_names_its_ancestor
+    output_dir = Dir.mktmpdir("bulldogger-flt-")
+    path = File.expand_path("../fixtures/flt/minitest_flt_test.rb", __dir__)
+    index = generate_index(output_dir, path)
+    command = ["bundle", "exec", "ruby", "-e", "abort 'must not run'"]
+    env = { "BULLDOGGER_OUTPUT_DIR" => output_dir }
+    _stdout, stderr, status = Open3.capture3(
+      env, "bundle", "exec", "ruby", "-Ilib", "exe/bulldogger", "flt", "#{path}:branchy#2", "--index", index, "--", *command, chdir: ROOT
+    )
+
+    refute status.success?
+    assert_includes stderr, "'#{path}:branchy#2' is a block frame"
+    assert_includes stderr, "'#{path}:branchy#1'"
+    refute_includes stderr, "must not run"
+  ensure
+    FileUtils.remove_entry(output_dir) if output_dir && Dir.exist?(output_dir)
+  end
+
   def test_index_code_state_mismatch_prints_both_markers
     output_dir = Dir.mktmpdir("bulldogger-flt-")
     index = File.join(output_dir, "frames.jsonl")
@@ -105,6 +127,16 @@ class FltIntegrationTest < Minitest::Test
   end
 
   private
+
+  def generate_index(output_dir, path)
+    env = { "BULLDOGGER_OUTPUT_DIR" => output_dir }
+    stdout, stderr, status = Open3.capture3(
+      env, "bundle", "exec", "ruby", "-Ilib", "exe/bulldogger", "frames", "--", "bundle", "exec", "ruby", "-Itest", path, "--seed", "12345", chdir: ROOT
+    )
+    raise "frames generation failed: #{stderr}" unless status.success?
+
+    stdout[/bulldogger frames: (.+\.jsonl)$/, 1]
+  end
 
   def run_flt(method)
     output_dir = Dir.mktmpdir("bulldogger-flt-")

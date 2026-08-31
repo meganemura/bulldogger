@@ -119,7 +119,16 @@ if ENV["BULLDOGGER_FRAMES_OUT"] && !ENV["BULLDOGGER_FRAMES_OUT"].empty?
           )
         end
 
+        # TracePoint#method_id is nil for a b_call/b_return whose block
+        # sits outside any def (an RSpec `it do...end`, a class-body
+        # block). "block" keeps the fid's method segment non-empty. A
+        # name derived from @stack.last was rejected: at :b_call that
+        # is the enclosing frame, but at the matching :b_return it is
+        # the block's own frame (not yet popped), and record_return
+        # matches the two events by this same string.
         def normalize_method(method_id)
+          return "block" if method_id.nil?
+
           FramesMethod.normalize(method_id)
         end
 

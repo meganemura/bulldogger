@@ -29,11 +29,11 @@ tell.
   tests are green, and microseconds per exception when they are not.
 - Always-on full tracing is out. It was measured at 60x to 106x and
   the design treats that as a closed door.
-- Heavy work is an explicit verb (probe, record), never an ambient
-  default.
+- Heavy work is an explicit verb (probe, frames, preflight, flt, exec),
+  never an ambient default.
 - The product is files: a documented snapshot schema an agent can read
   and query. CLI and any servers are thin adapters over the files.
-- The failure message names the evidence path and how to query it.
+- The failure output names the evidence path and how to query it.
   An agent learns the tool at the moment of need, from the failure
   output itself.
 - Values may hold secrets. Capture is bounded (shallow inspect, length

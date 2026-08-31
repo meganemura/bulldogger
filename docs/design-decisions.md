@@ -409,6 +409,7 @@ Minitest 6 dropped the runtime plugin scan that Minitest 5 ran inside `Minitest.
 That flips registration order ahead of bulldogger's: Rails' own reporter prints each failure inline before bulldogger's reporter tags the exception's `#message`, and Rails' summary reporter skips the deferred printout that would otherwise show the tag.
 Minitest 5 ran the plugin scan late enough that bulldogger's plugin registered first, so the tag landed before Rails' inline print and the gap stayed hidden.
 The Minitest reporter now prints the evidence line straight to its own io during `#record`, independent of any other reporter's position and of the exception's frozen state.
+The guarantee attaches to what the run writes on failure, and no longer to the framework's message object.
 
 ## Name every block frame with a fid every verb can act on (2026-08-31)
 

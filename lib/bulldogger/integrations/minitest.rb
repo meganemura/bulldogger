@@ -48,6 +48,7 @@ module Bulldogger
     # klass/name/source_location rather than from re-deriving them.
     class Reporter < ::Minitest::AbstractReporter
       def prerecord(_klass, _name)
+        Bulldogger::FramesCollector.begin_test if defined?(Bulldogger::FramesCollector)
         Minitest.instance.begin_test
       end
 
@@ -62,6 +63,7 @@ module Bulldogger
         annotate!(failure, path) if path
       ensure
         Minitest.instance.end_test unless ENV["BULLDOGGER_REPLAY_CHILD"] == "1"
+        Bulldogger::FramesCollector.end_test if defined?(Bulldogger::FramesCollector)
       end
 
       private

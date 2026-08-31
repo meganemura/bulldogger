@@ -1,14 +1,25 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# This thin adapter answers two questions: the installed version and the
-# location of the shipped skill. Bulldogger exposes evidence as files, so
-# evidence queries and servers use separate interfaces.
+# This thin adapter routes frame collection and reports the installed version
+# or the shipped skill location. Evidence queries and servers use separate
+# interfaces because Bulldogger exposes evidence as files.
 
 require "bulldogger/skill"
 require "bulldogger/version"
 
-usage = "Usage: bulldogger skill path | bulldogger version | bulldogger --version"
+usage = "Usage: bulldogger frames -- command... | bulldogger skill path | bulldogger version | bulldogger --version"
+
+if ARGV.first(2) == ["frames", "--"]
+  require "bulldogger/frames"
+  begin
+    status = Bulldogger::Frames.run(ARGV.drop(2))
+    exit(status.exitstatus || 1)
+  rescue ArgumentError => error
+    warn "bulldogger: #{error.message}"
+    exit 1
+  end
+end
 
 case ARGV
 when ["skill", "path"]

@@ -3,6 +3,56 @@
 bulldogger writes one JSON evidence file for each failed test.
 The run directory also contains `index.json`, which lists the failure files.
 
+## Frames index
+
+The `frames` command writes one JSON object per line to a `.jsonl` file.
+The collector writes records as Ruby executes the selected test.
+Each process writes a separate file whose name includes its process ID.
+The command reports the file for its direct child.
+
+A `frame` record identifies one method or block call.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `type` | String | `frame`. |
+| `event` | String | `call` or `b_call`. |
+| `pid` | Integer | Process ID. |
+| `fid` | String | Normalized source path, method, and test-window call index. |
+| `parent` | String or null | Identifier of the active caller. |
+| `method` | String | Normalized method name. |
+| `path` | String | Absolute source path. |
+| `lineno` | Integer | Source line. |
+| `app` | Boolean | The source is below the command directory and outside `vendor/bundle`. |
+
+A `return` record names the `fid` that returned.
+It also has the `event`, `pid`, `method`, `path`, `lineno`, and `app` fields.
+The `event` value is `return` or `b_return`.
+
+A `raise` record has the common event fields and these fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `fid` | String or null | Active frame at the raise site. |
+| `exception_class` | String | Ruby exception class. |
+| `raise_ordinal` | Integer | Raise count since the selected test started. |
+
+The index includes raises that the application rescues.
+It does not store arguments, local variables, return values, or exception messages.
+
+The final `envelope` record describes the execution.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `schema_version` | Integer | Frames index schema version. |
+| `code_state` | Object | Git commit and dirty-state marker. |
+| `seed` | Integer or null | Seed parsed from the command arguments. |
+| `command` | Array of String | Complete child command without edits. |
+| `exit_status` | Integer or null | Child exit status. |
+| `outside_window_events` | Integer | Events observed before or after a test window. |
+
+The collector normalizes numeric segments in generated template method names.
+The fixed `__HASH__` token replaces both supported underscore forms.
+
 ## Top-level fields
 
 | Field | Type | Presence | Meaning |

@@ -8,13 +8,23 @@
 require "bulldogger/skill"
 require "bulldogger/version"
 
-usage = "Usage: bulldogger frames -- command... | bulldogger skill path | bulldogger version | bulldogger --version"
+usage = "Usage: bulldogger frames -- command... | bulldogger preflight -- command... | bulldogger skill path | bulldogger version | bulldogger --version"
 
 if ARGV.first(2) == ["frames", "--"]
   require "bulldogger/frames"
   begin
     status = Bulldogger::Frames.run(ARGV.drop(2))
     exit(status.exitstatus || 1)
+  rescue ArgumentError => error
+    warn "bulldogger: #{error.message}"
+    exit 1
+  end
+end
+
+if ARGV.first(2) == ["preflight", "--"]
+  require "bulldogger/preflight"
+  begin
+    exit Bulldogger::Preflight.run(ARGV.drop(2))
   rescue ArgumentError => error
     warn "bulldogger: #{error.message}"
     exit 1

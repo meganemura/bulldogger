@@ -8,7 +8,7 @@ class FltIntegrationTest < Minitest::Test
   include BulldoggerAcceptanceHelper
 
   def test_differential_records_reconstruct_visible_locals_and_scope_exit
-    records, stderr, status, output_dir = run_flt("branchy#1")
+    records, _stdout, stderr, status, output_dir = run_flt("branchy#1")
     assert status.success?, stderr
 
     call = records.find { |record| record["type"] == "call" }
@@ -38,15 +38,27 @@ class FltIntegrationTest < Minitest::Test
   end
 
   def test_call_index_selects_the_second_invocation
-    records, stderr, status, output_dir = run_flt("repeated#2")
+    records, _stdout, stderr, status, output_dir = run_flt("repeated#2")
     assert status.success?, stderr
     assert_equal({ "value" => { "value" => "9" } }, records.find { |record| record["type"] == "call" }.fetch("args"))
   ensure
     FileUtils.remove_entry(output_dir) if output_dir && Dir.exist?(output_dir)
   end
 
+  def test_target_never_traced_names_the_observed_call_count
+    records, stdout, stderr, status, output_dir = run_flt("repeated#5")
+    assert status.success?, stderr
+    assert_includes stdout, "bulldogger note: target was never traced (method called 2 times in the test window, target was call #5)"
+    envelope = records.find { |record| record["type"] == "envelope" }
+    assert_equal 2, envelope.fetch("observed_calls")
+    assert_equal 5, envelope.fetch("target_index")
+    assert_equal false, envelope.fetch("traced")
+  ensure
+    FileUtils.remove_entry(output_dir) if output_dir && Dir.exist?(output_dir)
+  end
+
   def test_loop_keeps_first_and_last_values_and_marks_skipped_iterations
-    records, stderr, status, output_dir = run_flt("loops#1")
+    records, _stdout, stderr, status, output_dir = run_flt("loops#1")
     assert status.success?, stderr
     marker = records.find { |record| record["type"] == "skipped_iterations" }
     assert_equal 2, marker.fetch("count")
@@ -58,7 +70,7 @@ class FltIntegrationTest < Minitest::Test
   end
 
   def test_each_loop_is_folded
-    records, stderr, status, output_dir = run_flt("each_loop#1")
+    records, _stdout, stderr, status, output_dir = run_flt("each_loop#1")
     assert status.success?, stderr
     assert_equal 2, records.find { |record| record["type"] == "skipped_iterations" }.fetch("count")
   ensure
@@ -66,7 +78,7 @@ class FltIntegrationTest < Minitest::Test
   end
 
   def test_nested_loops_keep_independent_fold_accounts
-    records, stderr, status, output_dir = run_flt("nested_loops#1")
+    records, _stdout, stderr, status, output_dir = run_flt("nested_loops#1")
     assert status.success?, stderr
     counts = records.filter_map { |record| record["count"] if record["type"] == "skipped_iterations" }
     assert_operator counts.count(2), :>=, 2
@@ -147,6 +159,6 @@ class FltIntegrationTest < Minitest::Test
     stdout, stderr, status = Open3.capture3(env, "bundle", "exec", "ruby", "-Ilib", "exe/bulldogger", "flt", fid, "--", *command, chdir: ROOT)
     trace_path = stdout[/bulldogger flt: (.+\.jsonl)$/, 1]
     records = trace_path && File.readlines(trace_path, chomp: true).map { |line| JSON.parse(line) }
-    [records || [], stderr, status, output_dir]
+    [records || [], stdout, stderr, status, output_dir]
   end
 end

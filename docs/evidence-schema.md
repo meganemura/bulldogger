@@ -87,12 +87,18 @@ A `return` record has the rendered return `value`.
 
 The final `envelope` record has these fields:
 
-| Field | Type | Meaning |
-|---|---|---|
-| `schema_version` | Integer | Frame lifetime trace schema version. |
-| `code_state` | Object | Git commit and dirty-state marker. |
-| `command` | Array of String | Complete child command without edits. |
-| `exit_status` | Integer or null | Child exit status. |
+| Field | Type | Presence | Meaning |
+|---|---|---|---|
+| `schema_version` | Integer | always | Frame lifetime trace schema version. |
+| `code_state` | Object | always | Git commit and dirty-state marker. |
+| `command` | Array of String | always | Complete child command without edits. |
+| `exit_status` | Integer or null | always | Child exit status. |
+| `observed_calls` | Integer | when the target was never traced | The method's call count in the test window, including 0. |
+| `target_index` | Integer | when the target was never traced | The requested call index, *k*. |
+| `traced` | Boolean | when the target was never traced | `false`. |
+
+When the target's *k*th call never happens in the test window, the trace has no `call`, `line`, or `return` record.
+The collector writes a `target_summary` record instead, and the launcher prints a matching `bulldogger note:` line.
 
 ## Statement evaluation result
 
@@ -117,6 +123,12 @@ It also has `outcome` and `exit_status` for the child command.
 The `outcome` value is `pass`, `fail`, or `error`.
 
 The final `envelope` record has `schema_version`, `code_state`, and `command`.
+When the target's *k*th call never happens, no `evaluation` record exists.
+The collector writes a `target_summary` record instead, and the envelope carries `observed_calls`, `target_index`, and `traced: false`, the same fields `flt` uses.
+
+The target call can also happen without the addressed line ever reaching the requested visit.
+The collector then writes an `evaluation_summary` record with `fid`, `line`, `line_visits_observed`, `target_visit`, and `evaluated: false`.
+The envelope carries `line_visits_observed`, `target_visit`, and `evaluated: false`, and the launcher prints a matching `bulldogger note:` line.
 
 ## Top-level fields
 

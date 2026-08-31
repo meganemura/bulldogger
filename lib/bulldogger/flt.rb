@@ -26,16 +26,29 @@ module Bulldogger
       pid = Process.spawn(env, *command)
       _waited_pid, status = Process.wait2(pid)
       path = "#{base_path}-#{pid}.jsonl"
-      File.open(path, "a") do |file|
-        file.puts JSON.generate(
-          "type" => "envelope", "schema_version" => SCHEMA_VERSION,
-          "code_state" => code_state, "command" => command, "exit_status" => status.exitstatus
-        )
+      records = File.file?(path) ? File.readlines(path, chomp: true).map { |entry| JSON.parse(entry) } : []
+      summary = records.reverse.find { |record| record["type"] == "target_summary" }
+      envelope = {
+        "type" => "envelope", "schema_version" => SCHEMA_VERSION,
+        "code_state" => code_state, "command" => command, "exit_status" => status.exitstatus
+      }
+      if summary
+        envelope["observed_calls"] = summary["observed_calls"]
+        envelope["target_index"] = summary["target_index"]
+        envelope["traced"] = false
       end
+      File.open(path, "a") { |file| file.puts JSON.generate(envelope) }
       stdout.puts "bulldogger flt: #{path}"
+      stdout.puts "bulldogger note: #{never_traced_note(summary)}" if summary
       stdout.puts "bulldogger result: #{Frames.send(:outcome, status)} (exit #{status.exitstatus || status.termsig})"
       status
     end
+
+    def never_traced_note(summary)
+      calls = summary.fetch("observed_calls")
+      "target was never traced (method called #{calls} #{calls == 1 ? 'time' : 'times'} in the test window, target was call ##{summary.fetch('target_index')})"
+    end
+    private_class_method :never_traced_note
 
   end
 end

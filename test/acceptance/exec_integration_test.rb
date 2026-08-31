@@ -89,6 +89,51 @@ class ExecIntegrationTest < Minitest::Test
     FileUtils.remove_entry(output_dir) if output_dir && Dir.exist?(output_dir)
   end
 
+  def test_target_never_traced_names_the_observed_call_count
+    records, stdout, stderr, status, output_dir = run_exec(
+      "loop_values#2", line: 1, statement: "nil", test_name: "test_loop_values"
+    )
+
+    assert status.success?, stderr
+    assert_includes stdout, "bulldogger note: target was never traced (method called 1 time in the test window, target was call #2)"
+    envelope = records.find { |record| record["type"] == "envelope" }
+    assert_equal 1, envelope.fetch("observed_calls")
+    assert_equal 2, envelope.fetch("target_index")
+    assert_equal false, envelope.fetch("traced")
+  ensure
+    FileUtils.remove_entry(output_dir) if output_dir && Dir.exist?(output_dir)
+  end
+
+  def test_statement_never_evaluated_when_the_visit_never_comes
+    records, stdout, stderr, status, output_dir = run_exec(
+      "stable_value#1", line: 23, visit: 2, statement: "nil", test_name: "test_statement_exception_does_not_change_the_outcome"
+    )
+
+    assert status.success?, stderr
+    assert_includes stdout, "bulldogger note: statement was never evaluated (line 23 visited 1 time in call #1, target was visit #2)"
+    envelope = records.find { |record| record["type"] == "envelope" }
+    assert_equal 1, envelope.fetch("line_visits_observed")
+    assert_equal 2, envelope.fetch("target_visit")
+    assert_equal false, envelope.fetch("evaluated")
+  ensure
+    FileUtils.remove_entry(output_dir) if output_dir && Dir.exist?(output_dir)
+  end
+
+  def test_statement_never_evaluated_when_the_line_never_comes
+    records, stdout, stderr, status, output_dir = run_exec(
+      "stable_value#1", line: 999, statement: "nil", test_name: "test_statement_exception_does_not_change_the_outcome"
+    )
+
+    assert status.success?, stderr
+    assert_includes stdout, "bulldogger note: statement was never evaluated (line 999 visited 0 times in call #1, target was visit #1)"
+    envelope = records.find { |record| record["type"] == "envelope" }
+    assert_equal 0, envelope.fetch("line_visits_observed")
+    assert_equal 1, envelope.fetch("target_visit")
+    assert_equal false, envelope.fetch("evaluated")
+  ensure
+    FileUtils.remove_entry(output_dir) if output_dir && Dir.exist?(output_dir)
+  end
+
   def test_non_application_target_uses_the_shared_refusal
     output_dir = Dir.mktmpdir("bulldogger-exec-")
     command = ["bundle", "exec", "ruby", "-e", "exit 0"]

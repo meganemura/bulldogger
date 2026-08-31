@@ -39,20 +39,48 @@ module Bulldogger
       outcome = Frames.send(:outcome, status)
       records = File.file?(path) ? File.readlines(path, chomp: true).map { |entry| JSON.parse(entry) } : []
       evaluation = records.reverse.find { |record| record["type"] == "evaluation" }
+      summary = records.reverse.find { |record| record["type"] == "target_summary" }
+      visit_summary = records.reverse.find { |record| record["type"] == "evaluation_summary" }
       result = {
         "type" => "result", "fid" => fid, "line" => line, "visit" => visit,
         "outcome" => outcome, "exit_status" => status.exitstatus
       }
       result.merge!(evaluation.reject { |key, _value| key == "type" }) if evaluation
+      envelope = { "type" => "envelope", "schema_version" => SCHEMA_VERSION, "code_state" => code_state, "command" => command }
+      if summary
+        envelope["observed_calls"] = summary["observed_calls"]
+        envelope["target_index"] = summary["target_index"]
+        envelope["traced"] = false
+      elsif visit_summary
+        envelope["line_visits_observed"] = visit_summary["line_visits_observed"]
+        envelope["target_visit"] = visit_summary["target_visit"]
+        envelope["evaluated"] = false
+      end
       File.open(path, "a") do |file|
         file.puts JSON.generate(result)
-        file.puts JSON.generate("type" => "envelope", "schema_version" => SCHEMA_VERSION, "code_state" => code_state, "command" => command)
+        file.puts JSON.generate(envelope)
       end
       stdout.puts "bulldogger exec: #{path}"
+      stdout.puts "bulldogger note: #{never_traced_note(summary)}" if summary
+      stdout.puts "bulldogger note: #{never_evaluated_note(fid, visit_summary)}" if visit_summary
       stdout.puts "bulldogger value: #{result.dig('value', 'value')}" if result["value"]
       stdout.puts "bulldogger result: #{outcome} (exit #{status.exitstatus || status.termsig})"
       status
     end
+
+    def never_traced_note(summary)
+      calls = summary.fetch("observed_calls")
+      "target was never traced (method called #{calls} #{calls == 1 ? 'time' : 'times'} in the test window, target was call ##{summary.fetch('target_index')})"
+    end
+    private_class_method :never_traced_note
+
+    def never_evaluated_note(fid, summary)
+      visits = summary.fetch("line_visits_observed")
+      call_index = fid[/#(\d+)\z/, 1]
+      "statement was never evaluated (line #{summary.fetch('line')} visited #{visits} #{visits == 1 ? 'time' : 'times'} " \
+        "in call ##{call_index}, target was visit ##{summary.fetch('target_visit')})"
+    end
+    private_class_method :never_evaluated_note
 
   end
 end

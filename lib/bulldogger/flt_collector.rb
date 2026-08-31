@@ -39,8 +39,10 @@ if ENV["BULLDOGGER_FLT_OUT"] && ENV["BULLDOGGER_FLT_FID"]
           end
 
           @count += 1
+          @observed_calls = @count if @count > @observed_calls
           return unless @count == @target_index
 
+          @target_reached = true
           @target_binding = trace.binding
           @target_depth = 1
           @previous = snapshot(trace.binding)
@@ -166,12 +168,15 @@ if ENV["BULLDOGGER_FLT_OUT"] && ENV["BULLDOGGER_FLT_FID"]
       @formatter = Formatter.new(config: config, redactor: @redactor)
       @active = false
       @count = 0
+      @observed_calls = 0
+      @target_reached = false
       @mutex = Mutex.new
       @file = File.open("#{ENV.fetch('BULLDOGGER_FLT_OUT')}-#{Process.pid}.jsonl", "a")
       # This gate stays active for the full run, so each extra event adds pass-through cost.
       @gate = TracePoint.new(:call, :return) { |trace| dispatch(trace) }
       @gate.enable
       at_exit do
+        write("type" => "target_summary", "observed_calls" => @observed_calls, "target_index" => @target_index, "traced" => false) unless @target_reached
         @line_trace&.disable
         @gate.disable
         @file.close

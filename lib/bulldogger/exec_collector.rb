@@ -48,8 +48,10 @@ if ENV["BULLDOGGER_EXEC"] == "1" && ENV["BULLDOGGER_EXEC_OUT"] && ENV["BULLDOGGE
           end
 
           @count += 1
+          @observed_calls = @count if @count > @observed_calls
           return unless @count == @target_index
 
+          @target_reached = true
           @visits = 0
           @target_depth = 1
           iseq = RubyVM::InstructionSequence.of(trace.binding.eval("method(__method__)"))
@@ -63,6 +65,10 @@ if ENV["BULLDOGGER_EXEC"] == "1" && ENV["BULLDOGGER_EXEC_OUT"] && ENV["BULLDOGGE
           @target_depth -= 1
           return unless @target_depth.zero?
 
+          write(
+            "type" => "evaluation_summary", "fid" => @fid, "line" => @target_line,
+            "line_visits_observed" => @visits, "target_visit" => @target_visit, "evaluated" => false
+          )
           @line_trace.disable
           @line_trace = nil
         end
@@ -106,6 +112,8 @@ if ENV["BULLDOGGER_EXEC"] == "1" && ENV["BULLDOGGER_EXEC_OUT"] && ENV["BULLDOGGE
       @formatter = Formatter.new(config: config, redactor: redactor)
       @active = false
       @count = 0
+      @observed_calls = 0
+      @target_reached = false
       @target_depth = 0
       @mutex = Mutex.new
       @file = File.open("#{ENV.fetch('BULLDOGGER_EXEC_OUT')}-#{Process.pid}.jsonl", "a")
@@ -113,6 +121,7 @@ if ENV["BULLDOGGER_EXEC"] == "1" && ENV["BULLDOGGER_EXEC_OUT"] && ENV["BULLDOGGE
       @gate = TracePoint.new(:call, :return) { |trace| dispatch(trace) }
       @gate.enable
       at_exit do
+        write("type" => "target_summary", "observed_calls" => @observed_calls, "target_index" => @target_index, "traced" => false) unless @target_reached
         @line_trace&.disable
         @gate.disable
         @file.close

@@ -42,6 +42,8 @@ Find one local across all captured frames:
 jq '[.frames[] | select(.locals.qty) | {index, label, qty: .locals.qty}]' /absolute/path/to/evidence.json
 ```
 
+No frame here owns the value on an assertion-shaped failure: the method that produced it already returned before the assertion raised, and the failure output's own parenthetical names this shape. Read [re-execution](reexecution.md) instead of searching further in this file.
+
 ## Read missing values correctly
 
 A local with `redacted: true` was hidden because its name matched a redaction pattern.

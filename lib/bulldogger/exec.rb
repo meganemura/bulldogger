@@ -3,6 +3,7 @@
 require "fileutils"
 require "json"
 require_relative "code_state"
+require_relative "collector_environment"
 require_relative "execution_target"
 require_relative "frames"
 
@@ -20,14 +21,18 @@ module Bulldogger
       raise ArgumentError, "exec requires a positive line" unless line.positive?
       raise ArgumentError, "exec requires a positive visit" unless visit.positive?
 
-      code_state = CodeState.capture(target.fetch(:root))
+      code_state = CodeState.capture(target.root)
       return 1 unless ExecutionTarget.acceptable?(target, index: index, code_state: code_state, verb: "exec", stderr: stderr)
 
       output_dir = File.expand_path(output_dir)
       FileUtils.mkdir_p(output_dir)
       base_path = File.join(output_dir, "exec")
-      collector = File.expand_path("exec_collector.rb", __dir__)
-      env = collector_environment(base_path, collector, fid, line, visit, statement)
+      env = CollectorEnvironment.build(
+        "exec_collector.rb",
+        "BULLDOGGER_EXEC" => "1", "BULLDOGGER_EXEC_OUT" => base_path,
+        "BULLDOGGER_EXEC_FID" => fid, "BULLDOGGER_EXEC_LINE" => line.to_s,
+        "BULLDOGGER_EXEC_VISIT" => visit.to_s, "BULLDOGGER_EXEC_STATEMENT" => statement
+      )
       pid = Process.spawn(env, *command)
       _waited_pid, status = Process.wait2(pid)
       path = "#{base_path}-#{pid}.jsonl"
@@ -49,19 +54,5 @@ module Bulldogger
       status
     end
 
-    def collector_environment(base_path, collector, fid, line, visit, statement)
-      option = "-r#{collector}"
-      rubyopt = ENV["RUBYOPT"]
-      {
-        "BULLDOGGER_EXEC" => "1",
-        "BULLDOGGER_EXEC_OUT" => base_path,
-        "BULLDOGGER_EXEC_FID" => fid,
-        "BULLDOGGER_EXEC_LINE" => line.to_s,
-        "BULLDOGGER_EXEC_VISIT" => visit.to_s,
-        "BULLDOGGER_EXEC_STATEMENT" => statement,
-        "RUBYOPT" => rubyopt.nil? || rubyopt.empty? ? option : "#{rubyopt} #{option}"
-      }
-    end
-    private_class_method :collector_environment
   end
 end

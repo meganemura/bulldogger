@@ -3,6 +3,7 @@
 require "fileutils"
 require "json"
 require_relative "code_state"
+require_relative "collector_environment"
 require_relative "execution_target"
 require_relative "frames"
 
@@ -15,14 +16,13 @@ module Bulldogger
       target = ExecutionTarget.parse(fid, "flt")
       raise ArgumentError, "flt requires a command after --" if command.empty?
 
-      code_state = CodeState.capture(target.fetch(:root))
+      code_state = CodeState.capture(target.root)
       return 1 unless ExecutionTarget.acceptable?(target, index: index, code_state: code_state, verb: "flt", stderr: stderr)
 
       output_dir = File.expand_path(output_dir)
       FileUtils.mkdir_p(output_dir)
       base_path = File.join(output_dir, "flt")
-      collector = File.expand_path("flt_collector.rb", __dir__)
-      env = collector_environment(base_path, collector, fid)
+      env = CollectorEnvironment.build("flt_collector.rb", "BULLDOGGER_FLT_OUT" => base_path, "BULLDOGGER_FLT_FID" => fid)
       pid = Process.spawn(env, *command)
       _waited_pid, status = Process.wait2(pid)
       path = "#{base_path}-#{pid}.jsonl"
@@ -37,15 +37,5 @@ module Bulldogger
       status
     end
 
-    def collector_environment(base_path, collector, fid)
-      option = "-r#{collector}"
-      rubyopt = ENV["RUBYOPT"]
-      {
-        "BULLDOGGER_FLT_OUT" => base_path,
-        "BULLDOGGER_FLT_FID" => fid,
-        "RUBYOPT" => rubyopt.nil? || rubyopt.empty? ? option : "#{rubyopt} #{option}"
-      }
-    end
-    private_class_method :collector_environment
   end
 end

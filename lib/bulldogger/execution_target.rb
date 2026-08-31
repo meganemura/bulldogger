@@ -7,6 +7,14 @@ module Bulldogger
   # Collector launch and evidence writing stay in each verb.
   module ExecutionTarget
     FID_PATTERN = /\A(.+):([^:#]+)#([1-9]\d*)\z/
+    Target = Data.define(:path, :method, :index, :root) do
+      def application_path?(verb, stderr)
+        return true if path.start_with?("#{root}/") && !path.start_with?("#{root}/vendor/bundle/")
+
+        stderr.puts "bulldogger #{verb}: target is not an application frame; use the frames index, read the gem source, or use probe"
+        false
+      end
+    end
 
     module_function
 
@@ -15,22 +23,14 @@ module Bulldogger
       raise ArgumentError, "#{verb} requires a fid in path:method#k form" unless match
 
       root = File.expand_path(Dir.pwd)
-      { path: File.expand_path(match[1], root), method: match[2], index: Integer(match[3], 10), root: root }
+      Target.new(path: File.expand_path(match[1], root), method: match[2], index: Integer(match[3], 10), root: root)
     end
 
     def acceptable?(target, index:, code_state:, verb:, stderr:)
-      return false unless application_path?(target.fetch(:path), target.fetch(:root), verb, stderr)
+      return false unless target.application_path?(verb, stderr)
 
       index_state_matches?(index, code_state, verb, stderr)
     end
-
-    def application_path?(path, root, verb, stderr)
-      return true if path.start_with?("#{root}/") && !path.start_with?("#{root}/vendor/bundle/")
-
-      stderr.puts "bulldogger #{verb}: target is not an application frame; use the frames index, read the gem source, or use probe"
-      false
-    end
-    private_class_method :application_path?
 
     def index_state_matches?(index, current, verb, stderr)
       return true unless index

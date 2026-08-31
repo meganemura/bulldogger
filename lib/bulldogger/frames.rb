@@ -3,6 +3,7 @@
 require "fileutils"
 require "json"
 require_relative "code_state"
+require_relative "collector_environment"
 
 module Bulldogger
   # Runs one command with structural frame collection enabled.
@@ -18,8 +19,7 @@ module Bulldogger
       output_dir = File.expand_path(output_dir)
       FileUtils.mkdir_p(output_dir)
       base_path = File.join(output_dir, "frames")
-      collector = File.expand_path("frames_collector.rb", __dir__)
-      env = collector_environment(base_path, collector)
+      env = CollectorEnvironment.build("frames_collector.rb", "BULLDOGGER_FRAMES_OUT" => base_path)
       pid = Process.spawn(env, *command)
       _waited_pid, status = Process.wait2(pid)
       path = "#{base_path}-#{pid}.jsonl"
@@ -28,16 +28,6 @@ module Bulldogger
       stdout.puts "bulldogger result: #{outcome(status)} (exit #{status.exitstatus || status.termsig})"
       status
     end
-
-    def collector_environment(base_path, collector)
-      option = "-r#{collector}"
-      rubyopt = ENV["RUBYOPT"]
-      {
-        "BULLDOGGER_FRAMES_OUT" => base_path,
-        "RUBYOPT" => rubyopt.nil? || rubyopt.empty? ? option : "#{rubyopt} #{option}"
-      }
-    end
-    private_class_method :collector_environment
 
     def append_envelope(path, command, status)
       summary = read_summary(path)

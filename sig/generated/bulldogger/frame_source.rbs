@@ -1,0 +1,78 @@
+# Generated from lib/bulldogger/frame_source.rb with RBS::Inline
+
+module Bulldogger
+  # Turns a :raise TracePoint event into a bounded array of frame
+  # descriptions. Prefers DEBUGGER__.capture_frames, which yields every
+  # frame's Binding; falls back to TracePoint#binding (raising frame
+  # only) plus the exception's backtrace locations (position only, no
+  # locals) when `debug/frame_info` cannot be loaded. That fallback is
+  # not a rare edge case: `debug` is a bundled gem, not a default gem,
+  # so under Bundler it is only present when the app's own Gemfile asks
+  # for it.
+  class FrameSource
+    @mode: Symbol?
+
+    @skip_path_prefix: String
+
+    @redactor: Redactor
+
+    @formatter: Formatter
+
+    @config: Config
+
+    # : (config: Config, formatter: Formatter, redactor: Redactor, ?skip_path_prefix: String) -> void
+    def initialize: (config: Config, formatter: Formatter, redactor: Redactor, ?skip_path_prefix: String) -> void
+
+    # skip_path_prefix must be *this library's* lib directory, not the
+    # app's. capture_frames drops every frame whose path starts with
+    # the given prefix; pointing it at the app's own lib directory was
+    # measured to make the app's frames disappear instead of ours,
+    # leaving a snapshot with zero useful frames.
+    # : () -> String
+    def self.default_skip_path_prefix: () -> String
+
+    # :auto resolves once, here, and is cached for the life of this
+    # object -- not re-checked on every raise, which would repeat a
+    # `require` check thousands of times in a large suite.
+    # : () -> self
+    def resolve!: () -> self
+
+    # : () -> Symbol
+    def mode: () -> Symbol
+
+    # : (TracePoint tp) -> [Array[json], Integer]
+    def capture: (TracePoint tp) -> [ Array[json], Integer ]
+
+    private
+
+    # : () -> Symbol
+    def resolve_mode: () -> Symbol
+
+    # : () -> bool
+    def capture_frames_available?: () -> bool
+
+    # : (TracePoint tp) -> [Array[json], Integer]
+    def capture_via_debugger: (TracePoint tp) -> [ Array[json], Integer ]
+
+    # : (untyped frame_info, Integer index) -> json
+    def build_frame: (untyped frame_info, Integer index) -> json
+
+    # : (TracePoint tp) -> [Array[json], Integer]
+    def capture_degraded: (TracePoint tp) -> [ Array[json], Integer ]
+
+    # : (TracePoint tp) -> Array[Thread::Backtrace::Location]
+    def degraded_locations: (TracePoint tp) -> Array[Thread::Backtrace::Location]
+
+    # : (TracePoint tp, Thread::Backtrace::Location location, Integer index) -> json
+    def build_degraded_frame: (TracePoint tp, Thread::Backtrace::Location location, Integer index) -> json
+
+    # : (TracePoint tp) -> [Hash[String, json], Integer]
+    def build_frame0_locals: (TracePoint tp) -> [ Hash[String, json], Integer ]
+
+    # : (Binding binding) -> [Hash[String, json], Integer]
+    def build_locals: (Binding binding) -> [ Hash[String, json], Integer ]
+
+    # : (Symbol name, Binding binding) -> json
+    def build_local_entry: (Symbol name, Binding binding) -> json
+  end
+end

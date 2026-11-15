@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require_relative "target_resolver"
 require_relative "registry"
@@ -16,6 +17,19 @@ module Bulldogger
     # across targets), aggregates every observed call/return into
     # MethodStats, and writes the evidence file on finish.
     class Session
+      # @rbs @targets: Array[Target]
+      # @rbs @config: Config
+      # @rbs @run: Run
+      # @rbs @redactor: Redactor
+      # @rbs @formatter: Formatter
+      # @rbs @stats: Hash[String, MethodStats]
+      # @rbs @trace_points: Array[TracePoint]
+      # @rbs @started_at: Time
+      # @rbs @finished: bool
+      # @rbs @finish_mutex: Thread::Mutex
+      # @rbs @result_path: String?
+
+      #: (Array[String] target_strings, config: Config, run: Run) -> Session?
       def self.start(target_strings, config:, run:)
         return nil unless config.enabled
 
@@ -35,6 +49,7 @@ module Bulldogger
         end
       end
 
+      #: (Array[String] target_strings, config: Config, run: Run) ?{ () -> void } -> String?
       def self.run(target_strings, config:, run:)
         unless config.enabled
           # The switch being off must not stop the caller's own code
@@ -44,7 +59,7 @@ module Bulldogger
           return nil
         end
 
-        session = start(target_strings, config: config, run: run)
+        session = start(target_strings, config: config, run: run) #: Session
         # The written path comes from session.finish, not from
         # `begin...ensure...end`'s own value (that would be the
         # block's return value): an ensure clause's result is
@@ -61,14 +76,16 @@ module Bulldogger
         result
       end
 
+      #: (targets: Array[Target], config: Config, run: Run) -> void
       def initialize(targets:, config:, run:)
         @targets = targets
         @config = config
         @run = run
         @redactor = Redactor.new(config.redact_patterns)
         @formatter = Formatter.new(config: config, redactor: @redactor)
-        @stats = targets.each_with_object({}) do |target, hash|
-          hash[target.label] = MethodStats.new(target: target, formatter: @formatter, redactor: @redactor,
+        @stats = {}
+        targets.each do |target|
+          @stats[target.label] = MethodStats.new(target: target, formatter: @formatter, redactor: @redactor,
                                                  max_samples: config.max_samples)
         end
         @trace_points = []
@@ -77,6 +94,7 @@ module Bulldogger
         @finish_mutex = Mutex.new
       end
 
+      #: () -> self
       def enable!
         RaiseTracker.instance.acquire
         @targets.each do |target|
@@ -91,6 +109,7 @@ module Bulldogger
         raise
       end
 
+      #: () -> String?
       def finish
         @finish_mutex.synchronize do
           return @result_path if @finished
@@ -114,6 +133,7 @@ module Bulldogger
       # routing logic is covered by an ordinary test and not just by
       # the hook actually firing (which stdlib Coverage cannot see
       # inside).
+      #: (MethodStats stats) -> TracePoint
       def build_trace_point(stats)
         TracePoint.new(:call, :return) { |tp| dispatch(tp, stats) }
       end
@@ -134,6 +154,7 @@ module Bulldogger
       # the single most expensive thing this hook does -- 4-5x the
       # cost of TracePoint's own dispatch -- and building frames this
       # code never reads was pure waste.
+      #: (TracePoint tp, MethodStats stats) -> void
       def dispatch(tp, stats)
         case tp.event
         when :call

@@ -1,0 +1,22 @@
+# Generated from lib/bulldogger/rerun_command.rb with RBS::Inline
+
+module Bulldogger
+  # Builds framework test selectors and complete shell rerun commands.
+  # Replay execution and process management stay outside this module.
+  module RerunCommand
+    # : (test_info? test) -> String?
+    def self?.build: (test_info? test) -> String?
+
+    # : (test_info test) -> String?
+    def self?.minitest_method: (test_info test) -> String?
+
+    # : (test_info test) -> String?
+    def self?.rspec_location: (test_info test) -> String?
+
+    # : (test_info test) -> Array[String]?
+    def self?.minitest_arguments: (test_info test) -> Array[String]?
+
+    # : (test_info test) -> Array[String]?
+    def self?.rspec_arguments: (test_info test) -> Array[String]?
+  end
+end

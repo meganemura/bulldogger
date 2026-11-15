@@ -1,0 +1,43 @@
+# Generated from lib/bulldogger/probe/comparator.rb with RBS::Inline
+
+module Bulldogger
+  module Probe
+    # Compares two probe evidence files for behavior-preservation:
+    # "did this refactor change what the probed methods actually do."
+    #
+    # Compares *shape* (classes seen, nil_count, raised_exits, calls,
+    # the set of callers, parameters), not raw sample values, because
+    # the default `inspect` embeds an object's memory address (e.g.
+    # `#<Order:0x000000012a>`), so two probes of *identical*,
+    # unchanged code would otherwise report differences on every run.
+    # Samples are still diffed as a secondary signal, but only after
+    # normalizing `0x[0-9a-f]+` out of them for exactly this reason.
+    module Comparator
+      HEX_ADDRESS: Regexp
+
+      # : (String path_a, String path_b) -> json
+      def self?.compare: (String path_a, String path_b) -> json
+
+      # : (json methods_a, json methods_b, Array[String] differences) -> void
+      def self?.compare_methods: (json methods_a, json methods_b, Array[String] differences) -> void
+
+      # : (String label, json ma, json mb, Array[String] differences) -> void
+      def self?.compare_method: (String label, json ma, json mb, Array[String] differences) -> void
+
+      # : (String label, json params_a, json params_b, Array[String] differences) -> void
+      def self?.compare_params: (String label, json params_a, json params_b, Array[String] differences) -> void
+
+      # : (String prefix, json? bucket_a, json? bucket_b, Array[String] differences) -> void
+      def self?.compare_bucket: (String prefix, json? bucket_a, json? bucket_b, Array[String] differences) -> void
+
+      # : (String prefix, Array[untyped] samples_a, Array[untyped] samples_b, Array[String] differences) -> void
+      def self?.compare_samples: (String prefix, Array[untyped] samples_a, Array[untyped] samples_b, Array[String] differences) -> void
+
+      # : (Array[untyped] samples) -> Array[untyped]
+      def self?.normalize_samples: (Array[untyped] samples) -> Array[untyped]
+
+      # : (Array[String] differences, String label, String field, untyped value_a, untyped value_b) -> void
+      def self?.add_diff: (Array[String] differences, String label, String field, untyped value_a, untyped value_b) -> void
+    end
+  end
+end

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "json"
 
@@ -6,8 +7,16 @@ module Bulldogger
   # Parses and validates targets for verbs that re-execute application frames.
   # Collector launch and evidence writing stay in each verb.
   module ExecutionTarget
-    FID_PATTERN = /\A(.+):([^:#]+)#([1-9]\d*)\z/
-    Target = Data.define(:path, :method, :index, :root) do
+    FID_PATTERN = /\A(.+):([^:#]+)#([1-9]\d*)\z/ #: Regexp
+    Target = Data.define(
+      :path, #: String
+      :method, #: String
+      :index, #: Integer
+      :root #: String
+    )
+
+    class Target
+      #: (String verb, IO stderr) -> bool
       def application_path?(verb, stderr)
         return true if path.start_with?("#{root}/") && !path.start_with?("#{root}/vendor/bundle/")
 
@@ -18,6 +27,7 @@ module Bulldogger
 
     module_function
 
+    #: (String fid, String verb) -> Target
     def parse(fid, verb)
       match = FID_PATTERN.match(fid)
       raise ArgumentError, "#{verb} requires a fid in 'path:method#k' form" unless match
@@ -26,6 +36,7 @@ module Bulldogger
       Target.new(path: File.expand_path(match[1], root), method: match[2], index: Integer(match[3], 10), root: root)
     end
 
+    #: (Target target, index: String?, code_state: Hash[String, String?], verb: String, stderr: IO, fid: String) -> bool
     def acceptable?(target, index:, code_state:, verb:, stderr:, fid:)
       return false unless target.application_path?(verb, stderr)
       return false unless index_state_matches?(index, code_state, verb, stderr)
@@ -33,6 +44,7 @@ module Bulldogger
       addressable?(fid, index, verb, stderr)
     end
 
+    #: (String? index, Hash[String, String?] current, String verb, IO stderr) -> bool
     def index_state_matches?(index, current, verb, stderr)
       return true unless index
 
@@ -62,6 +74,7 @@ module Bulldogger
     # from a real call by pattern alone. Skipped without --index: there
     # is no data source to tell a block from a call in that case, so a
     # block fid run without an index still runs silently, as before.
+    #: (String fid, String? index, String verb, IO stderr) -> bool
     def addressable?(fid, index, verb, stderr)
       return true unless index
 
@@ -82,6 +95,7 @@ module Bulldogger
     end
     private_class_method :addressable?
 
+    #: (String index, String fid) -> json?
     def frame_record(index, fid)
       File.foreach(index) do |line|
         record = JSON.parse(line)
@@ -94,6 +108,7 @@ module Bulldogger
     # Walks the parent chain from a block frame to the nearest ancestor
     # that application_path? would also accept: a call event (not a
     # block) inside the application, not a gem or framework frame.
+    #: (String index, json record) -> String?
     def nearest_application_call(index, record)
       current = record
       loop do

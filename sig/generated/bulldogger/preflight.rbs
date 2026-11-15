@@ -1,0 +1,25 @@
+# Generated from lib/bulldogger/preflight.rb with RBS::Inline
+
+module Bulldogger
+  # Compares application frames from two isolated command runs.
+  # It does not select tests or change command arguments.
+  module Preflight
+    # : (Array[String] command, ?stdout: IO, ?stderr: IO) -> Integer
+    def self?.run: (Array[String] command, ?stdout: IO, ?stderr: IO) -> Integer
+
+    # : (Array[String] command) -> String
+    def self?.collect: (Array[String] command) -> String
+
+    # : (String path) -> bool
+    def self?.frame_summary?: (String path) -> bool
+
+    # : (String path) -> Array[Array[untyped]]
+    def self?.application_frames: (String path) -> Array[Array[untyped]]
+
+    # : (Array[Array[untyped]] first_frames, Array[Array[untyped]] second_frames) -> Integer
+    def self?.first_divergence: (Array[Array[untyped]] first_frames, Array[Array[untyped]] second_frames) -> Integer
+
+    # : (Array[untyped]? frame) -> String
+    def self?.format_frame: (Array[untyped]? frame) -> String
+  end
+end

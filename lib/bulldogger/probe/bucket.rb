@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 module Bulldogger
   module Probe
@@ -12,6 +13,11 @@ module Bulldogger
     # nil? never touch #inspect, so the tally stays cheap regardless
     # of how many calls a session sees.
     class Bucket
+      # @rbs @formatter: Formatter
+      # @rbs @max_samples: Integer
+      # @rbs @redacted_name: bool
+
+      #: (formatter: Formatter, max_samples: Integer, ?redacted_name: bool) -> void
       def initialize(formatter:, max_samples:, redacted_name: false)
         @formatter = formatter
         @max_samples = max_samples
@@ -22,6 +28,7 @@ module Bulldogger
         @count = 0
       end
 
+      #: (untyped value) -> void
       def record(value)
         @count += 1
         @classes[safe_class_name(value)] += 1
@@ -29,6 +36,7 @@ module Bulldogger
         @samples << sample_for(value) if @samples.size < @max_samples
       end
 
+      #: () -> json
       def to_h
         h = { "classes" => @classes, "nil_count" => @nil_count, "samples" => @samples }
         omitted = @count - @samples.size
@@ -52,6 +60,7 @@ module Bulldogger
       # could publish up to N * max_samples samples, silently
       # widening the documented limit just because more than one
       # thread happened to record some of the calls.
+      #: (Bucket other) -> void
       def merge!(other)
         @count += other.count
         other.classes.each { |klass, n| @classes[klass] += n }
@@ -65,7 +74,10 @@ module Bulldogger
 
       protected
 
-      attr_reader :count, :classes, :nil_count, :samples
+      attr_reader :count #: Integer
+      attr_reader :classes #: Hash[String, Integer]
+      attr_reader :nil_count #: Integer
+      attr_reader :samples #: Array[json]
 
       private
 
@@ -74,12 +86,14 @@ module Bulldogger
       # (MethodStats) already checked the name against redact_patterns
       # before a single value was ever inspected, matching Redactor's
       # own rule of checking the name before touching the value.
+      #: (untyped value) -> json
       def sample_for(value)
         return { "redacted" => true, "reason" => "name" } if @redacted_name
 
         @formatter.format(value)
       end
 
+      #: (untyped value) -> String
       def safe_class_name(value)
         klass = value.class
         klass.respond_to?(:name) ? (klass.name || klass.to_s) : klass.to_s

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "fileutils"
 require "json"
@@ -13,6 +14,14 @@ module Bulldogger
   # means in practice -- so nothing here may mkdir until a caller
   # actually asks for a path to write to.
   class Run
+    # @rbs @config: Config
+    # @rbs @dir: String?
+    # @rbs @sequence: Integer
+    # @rbs @failures: Array[json]
+    # @rbs @finished: bool
+    # @rbs @mutex: Thread::Mutex
+
+    #: (config: Config) -> void
     def initialize(config:)
       @config = config
       @dir = nil
@@ -27,20 +36,23 @@ module Bulldogger
     # though record_failure and finish already refuse on their own: a
     # caller who reads the API and asks for the run directory directly
     # must not be the one hole that still writes to disk.
+    #: () -> String?
     def dir
       return nil unless @config.enabled
 
       @mutex.synchronize { ensure_dir }
     end
 
+    #: (String slug) -> String
     def next_path(slug)
       @mutex.synchronize do
-        ensure_dir
+        dir = ensure_dir
         @sequence += 1
-        File.join(@dir, format("%03d-%s.json", @sequence, slug))
+        File.join(dir, format("%03d-%s.json", @sequence, slug))
       end
     end
 
+    #: (String path, test: json, exception_summary: json) -> void
     def record(path, test:, exception_summary:)
       @mutex.synchronize do
         @failures << {
@@ -51,6 +63,7 @@ module Bulldogger
       end
     end
 
+    #: () -> void
     def finish
       @mutex.synchronize do
         return if @finished
@@ -64,45 +77,52 @@ module Bulldogger
         # No @dir means record was never called: a green run. Writing
         # an index for zero failures would create the very directory
         # the zero-cost-when-green claim says must not exist.
-        return unless @dir
+        dir = @dir
+        return unless dir
 
-        write_index
-        write_latest_symlink
+        write_index(dir)
+        write_latest_symlink(dir)
       end
     end
 
     private
 
+    #: () -> String
     def ensure_dir
-      return @dir if @dir
+      existing = @dir
+      return existing if existing
 
-      @dir = File.join(base_output_dir, run_dir_name)
-      FileUtils.mkdir_p(@dir)
-      @dir
+      dir = @dir = File.join(base_output_dir, run_dir_name)
+      FileUtils.mkdir_p(dir)
+      dir
     end
 
+    #: () -> String
     def base_output_dir
       path = @config.output_dir
       File.absolute_path?(path) ? path : File.join(Dir.pwd, path)
     end
 
+    #: () -> String
     def run_dir_name
       "run-#{Time.now.strftime('%Y%m%d-%H%M%S')}-#{Process.pid}"
     end
 
-    def write_index
+    #: (String dir) -> void
+    def write_index(dir)
       index = {
         "schema_version" => 1,
-        "run_dir" => @dir,
+        "run_dir" => dir,
         "failures" => @failures
       }
-      File.write(File.join(@dir, "index.json"), "#{JSON.pretty_generate(index)}\n")
+      File.write(File.join(dir, "index.json"), "#{JSON.pretty_generate(index)}\n")
     end
 
-    def write_latest_symlink
+    #: (String dir) -> void
+    def write_latest_symlink(dir)
       link_path = File.join(base_output_dir, "latest")
       File.delete(link_path) if File.symlink?(link_path) || File.exist?(link_path)
-      File.symlink(@dir, link_path)
+      File.symlink(dir, link_path)
     rescue SystemCallError, NotImplementedError
       # Not every filesystem supports symlinks. index.json and the
       # evidence files are the source of truth; "latest" is a

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "json"
 require_relative "application_frames"
@@ -9,12 +10,14 @@ module Bulldogger
   module FailureOutput
     module_function
 
+    #: (String path) -> Array[String]
     def lines(path)
       evidence = JSON.parse(File.read(path))
 
+      no_frames = [] #: Array[json]
       lines = if evidence["capture_mode"] == "missed"
         ["bulldogger evidence: #{path} (snapshot holds no frames)"]
-      elsif ApplicationFrames.available?(evidence.dig("test", "file"), evidence.fetch("frames", []))
+      elsif ApplicationFrames.available?(evidence.dig("test", "file"), evidence.fetch("frames", no_frames))
         ["bulldogger evidence: #{path} (raising method is in these frames)"]
       else
         [missing_origin_line(path)]
@@ -25,6 +28,7 @@ module Bulldogger
       ["bulldogger evidence: #{path}"]
     end
 
+    #: (String path) -> String
     def missing_origin_line(path)
       "bulldogger evidence: #{path} (frames do not show where the value came from)"
     end

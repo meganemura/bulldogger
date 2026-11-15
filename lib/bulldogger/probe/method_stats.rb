@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require_relative "bucket"
 
@@ -24,8 +25,36 @@ module Bulldogger
       # One fiber's own, lock-free view of this target. Merged into
       # the instance's published totals by #merge_local, once, in
       # #to_h.
-      ThreadLocal = Struct.new(:calls, :raised_exits, :param_buckets, :returns, :raised, :callers)
+      # @rbs!
+      #   # A caller's "path:line" -> [calls seen from it, its location]
+      #   type callers = Hash[String, [Integer, Thread::Backtrace::Location]]
 
+      ThreadLocal = Struct.new(
+        :calls, #: Integer
+        :raised_exits, #: Integer
+        :param_buckets, #: Hash[String, Bucket]
+        :returns, #: Bucket
+        :raised, #: Hash[String, Integer]
+        :callers #: callers
+      )
+
+      # @rbs @formatter: Formatter
+      # @rbs @redactor: Redactor
+      # @rbs @max_samples: Integer
+      # @rbs @parameters: Array[[String, String?]]
+      # @rbs @calls: Integer
+      # @rbs @raised_exits: Integer
+      # @rbs @param_buckets: Hash[String, Bucket]
+      # @rbs @returns: Bucket
+      # @rbs @raised: Hash[String, Integer]
+      # @rbs @callers: callers
+      # @rbs @thread_key: Symbol
+      # @rbs @locals: Array[ThreadLocal]
+      # @rbs @locals_mutex: Thread::Mutex
+      # @rbs @merge_mutex: Thread::Mutex
+      # @rbs @merged: bool
+
+      #: (target: Target, formatter: Formatter, redactor: Redactor, max_samples: Integer) -> void
       def initialize(target:, formatter:, redactor:, max_samples:)
         @formatter = formatter
         @redactor = redactor
@@ -52,10 +81,12 @@ module Bulldogger
         @merged = false
       end
 
+      #: (TracePoint tp, Thread::Backtrace::Location? caller_location) -> void
       def record_call(tp, caller_location)
         local = thread_local
         local.calls += 1
-        record_param_samples(local, tp.binding)
+        binding = tp.binding
+        record_param_samples(local, binding) if binding
         record_caller(local, caller_location)
       end
 
@@ -65,6 +96,7 @@ module Bulldogger
       # never actually did), so it updates the thread-local @raised
       # instead of @returns and never touches the returns bucket at
       # all.
+      #: (TracePoint tp, raised: bool) -> void
       def record_return(tp, raised:)
         local = thread_local
         if raised
@@ -76,6 +108,7 @@ module Bulldogger
         end
       end
 
+      #: () -> json
       def to_h
         merge!
         {
@@ -95,19 +128,24 @@ module Bulldogger
       # once here, not derived from tp.parameters per call, since it
       # cannot change between calls and re-deriving it every time would
       # only add cost with no new information.
+      #: (UnboundMethod unbound_method) -> Array[[String, String?]]
       def declared_parameters(unbound_method)
-        unbound_method.parameters.map { |kind, name| [kind.to_s, name&.to_s] }
+        unbound_method.parameters.map { |kind, *name| [kind.to_s, name.first&.to_s] }
       end
 
+      #: () -> Hash[String, Bucket]
       def build_param_buckets
-        @parameters.each_with_object({}) do |(_kind, name), buckets|
+        buckets = {} #: Hash[String, Bucket]
+        @parameters.each do |_kind, name|
           next if name.nil? # anonymous *, **, or & has no bindable local to sample
 
           buckets[name] = Bucket.new(formatter: @formatter, max_samples: @max_samples,
-                                      redacted_name: @redactor.redact_name?(name))
+                                     redacted_name: @redactor.redact_name?(name))
         end
+        buckets
       end
 
+      #: () -> Bucket
       def new_returns_bucket
         Bucket.new(formatter: @formatter, max_samples: @max_samples)
       end
@@ -116,6 +154,7 @@ module Bulldogger
       # first touch. @locals_mutex is taken only here -- once per
       # fiber per target, not once per call -- to append to the
       # shared registry that #merge! later reads.
+      #: () -> ThreadLocal
       def thread_local
         Thread.current[@thread_key] ||= begin
           local = ThreadLocal.new(0, 0, build_param_buckets, new_returns_bucket, Hash.new(0), {})
@@ -124,6 +163,7 @@ module Bulldogger
         end
       end
 
+      #: (ThreadLocal local, Binding binding) -> void
       def record_param_samples(local, binding)
         local.param_buckets.each do |name, bucket|
           bucket.record(binding.local_variable_get(name.to_sym))
@@ -147,6 +187,7 @@ module Bulldogger
       # the evidence actually publishes -- is built from the stored
       # Location at most once per distinct call site, in
       # #callers_to_h, not once per call.
+      #: (ThreadLocal local, Thread::Backtrace::Location? caller_location) -> void
       def record_caller(local, caller_location)
         return unless caller_location
 
@@ -164,6 +205,7 @@ module Bulldogger
       # @merge_mutex, so #to_h itself can be called more than once
       # (Writer calls it exactly once per target today) without
       # double-counting.
+      #: () -> void
       def merge!
         return if @merged
 
@@ -181,6 +223,7 @@ module Bulldogger
         end
       end
 
+      #: (ThreadLocal local) -> void
       def merge_local(local)
         @calls += local.calls
         @raised_exits += local.raised_exits
@@ -197,6 +240,7 @@ module Bulldogger
         end
       end
 
+      #: () -> Hash[String, json]
       def params_to_h
         @param_buckets.transform_values(&:to_h)
       end
@@ -205,10 +249,11 @@ module Bulldogger
       # publishes) runs here, once per distinct call site total across
       # every fiber -- not once per call, which is what made this the
       # single most expensive part of the hook before this task.
+      #: () -> Hash[String, Integer]
       def callers_to_h
-        @callers.each_with_object({}) do |(_key, (count, location)), result|
-          result[location.to_s] = count
-        end
+        result = {} #: Hash[String, Integer]
+        @callers.each_value { |count, location| result[location.to_s] = count }
+        result
       end
     end
   end

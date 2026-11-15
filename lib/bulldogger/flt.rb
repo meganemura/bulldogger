@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "fileutils"
 require "json"
@@ -12,6 +13,7 @@ module Bulldogger
     SCHEMA_VERSION = 1
     module_function
 
+    #: (String fid, Array[String] command, ?index: String?, ?output_dir: String, ?stdout: IO, ?stderr: IO) -> (Process::Status | Integer)
     def run(fid, command, index: nil, output_dir: ENV.fetch("BULLDOGGER_OUTPUT_DIR", "tmp/bulldogger"), stdout: $stdout, stderr: $stderr)
       target = ExecutionTarget.parse(fid, "flt")
       raise ArgumentError, "flt requires a command after --" if command.empty?
@@ -26,12 +28,12 @@ module Bulldogger
       pid = Process.spawn(env, *command)
       _waited_pid, status = Process.wait2(pid)
       path = "#{base_path}-#{pid}.jsonl"
-      records = File.file?(path) ? File.readlines(path, chomp: true).map { |entry| JSON.parse(entry) } : []
+      records = File.file?(path) ? File.readlines(path, chomp: true).map { |entry| JSON.parse(entry) } : [] #: Array[json]
       summary = records.reverse.find { |record| record["type"] == "target_summary" }
       envelope = {
         "type" => "envelope", "schema_version" => SCHEMA_VERSION,
         "code_state" => code_state, "command" => command, "exit_status" => status.exitstatus
-      }
+      } #: json
       if summary
         envelope["observed_calls"] = summary["observed_calls"]
         envelope["target_index"] = summary["target_index"]
@@ -44,6 +46,7 @@ module Bulldogger
       status
     end
 
+    #: (json summary) -> String
     def never_traced_note(summary)
       calls = summary.fetch("observed_calls")
       "target was never traced (method called #{calls} #{calls == 1 ? 'time' : 'times'} in the test window, target was call ##{summary.fetch('target_index')})"

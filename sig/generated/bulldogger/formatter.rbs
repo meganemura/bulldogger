@@ -1,0 +1,65 @@
+# Generated from lib/bulldogger/formatter.rb with RBS::Inline
+
+module Bulldogger
+  # Turns an arbitrary Ruby value into a bounded, JSON-safe String.
+  # Bounded because a snapshot is written on every failing test, so an
+  # unbounded value (a huge String, a deep object graph) would make
+  # capture itself expensive. Safe because `inspect` is arbitrary user
+  # code: it can raise, and the object it runs on may descend from
+  # BasicObject, where even `#class` is undefined.
+  class Formatter
+    MAX_ELEMENTS: ::Integer
+
+    @max_value_length: Integer
+
+    @redactor: Redactor
+
+    # : (config: Config, redactor: Redactor) -> void
+    def initialize: (config: Config, redactor: Redactor) -> void
+
+    # Returns the per-local entry shape: {"value" => str} normally, plus
+    # "truncated"/"original_length" when the final string was too long.
+    # Those extra keys are the record that something was cut -- they
+    # must never appear on a value that was not, so a reader can trust
+    # their absence.
+    # : (untyped value) -> json
+    def format: (untyped value) -> json
+
+    # Returns just the (possibly truncated) String, for JSON slots that
+    # hold a plain string rather than a {"value"=>...} entry -- a
+    # frame's "self", for example.
+    # : (untyped value) -> String
+    def format_self: (untyped value) -> String
+
+    private
+
+    # : (untyped value) -> String
+    def render: (untyped value) -> String
+
+    # : (Array[untyped] array) -> String
+    def render_array: (Array[untyped] array) -> String
+
+    # : (Hash[untyped, untyped] hash) -> String
+    def render_hash: (Hash[untyped, untyped] hash) -> String
+
+    # : (untyped key, untyped value) -> String
+    def render_pair: (untyped key, untyped value) -> String
+
+    # One level of expansion only: an Array/Hash found *inside* an
+    # Array/Hash is shown as a placeholder, not walked further. Without
+    # this, a self-referential or very deep structure could make a
+    # single value's rendering unbounded even with max_value_length
+    # trimming the end result.
+    # : (untyped value) -> String
+    def render_nested: (untyped value) -> String
+
+    # : (untyped value) -> String
+    def safe_inspect: (untyped value) -> String
+
+    # : (untyped value) -> String
+    def safe_class_name: (untyped value) -> String
+
+    # : (String str) -> json
+    def truncate_entry: (String str) -> json
+  end
+end

@@ -1,0 +1,16 @@
+# Generated from lib/bulldogger/application_frames.rb with RBS::Inline
+
+module Bulldogger
+  # Classifies frames by their source path for failure output guidance.
+  # It does not decide what a caller does with that classification.
+  module ApplicationFrames
+    # : (String? test_file, untyped frames) -> bool
+    def self?.available?: (String? test_file, untyped frames) -> bool
+
+    # : (String path) -> bool
+    def self?.library_path?: (String path) -> bool
+
+    # : () -> Array[String]
+    def self?.library_paths: () -> Array[String]
+  end
+end

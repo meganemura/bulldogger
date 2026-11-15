@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "rbconfig"
 
@@ -8,6 +9,7 @@ module Bulldogger
   module ApplicationFrames
     module_function
 
+    #: (String? test_file, untyped frames) -> bool
     def available?(test_file, frames)
       return false unless test_file && frames.respond_to?(:any?)
 
@@ -23,10 +25,12 @@ module Bulldogger
       end
     end
 
+    #: (String path) -> bool
     def library_path?(path)
       library_paths.any? { |prefix| path.start_with?(prefix) }
     end
 
+    #: () -> Array[String]
     def library_paths
       # A vendored bundle can sit inside the project directory. Gem.path still
       # identifies it, so project-directory classification would be incorrect.

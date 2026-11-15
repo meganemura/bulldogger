@@ -1,0 +1,113 @@
+# Generated from lib/bulldogger/probe/raise_tracker.rb with RBS::Inline
+
+module Bulldogger
+  module Probe
+    # Tells a probed method's normal return apart from a raise-exit.
+    # `:call`/`:return` can be targeted to one method, but `:raise`
+    # cannot (measured directly): it fires globally, for every
+    # exception in the process. Distinguishing "returned nil"
+    # from "exited by raising" needs this second, global signal,
+    # correlated with each targeted call through the checkpoint below.
+    #
+    # Mechanism (measured on ruby 4.0.6): a global
+    # counter that a `:raise` TracePoint increments and a `:rescue`
+    # TracePoint decrements. `:call` records the counter's value; at
+    # `:return`, a *positive delta* from that recorded value means an
+    # exception passed through this frame's unwind between the two
+    # events, because the caller's own `:rescue` fires only after
+    # `:return`, so the counter is still unbalanced at `:return` time.
+    #
+    # Delta, not the absolute counter: an absolute counter left
+    # unbalanced by a raise from *before* this call started (e.g. one
+    # whose `:rescue` fires after this session already released the
+    # tracker) would poison every later call on the same fiber. A
+    # delta only asks "did the counter move during *this* call", so a
+    # pre-existing imbalance cannot produce a false positive.
+    #
+    # Counter and checkpoint stack are fiber-local (Thread.current[]),
+    # not a single shared integer: a fiber's call stack is private to
+    # that fiber, and only one exception can be unwinding through a
+    # given fiber's stack at a time, so a fiber-local counter can
+    # never be perturbed by an unrelated raise on another fiber or
+    # thread. A single shared counter would not have that guarantee.
+    #
+    # `:rescue` requires ruby >= 3.3.0 (Feature #19572); this gem's
+    # required_ruby_version is >= 4.0, so no degrade path is needed
+    # here. `:rescue` only fires for Ruby-level `rescue` (ruby's own
+    # NEWS-3.3.0.md); a raise fully handled inside C code (measured:
+    # `Integer(s, exception: false)`) never fires `:raise` either, so
+    # it cannot unbalance the counter in the first place.
+    class RaiseTracker
+      COUNTER_KEY: ::Symbol
+
+      STACK_KEY: ::Symbol
+
+      CLASS_KEY: ::Symbol
+
+      self.@instance: RaiseTracker?
+
+      @rescue_tp: TracePoint?
+
+      @raise_tp: TracePoint?
+
+      @refcount: Integer
+
+      @mutex: Thread::Mutex
+
+      # : () -> RaiseTracker
+      def self.instance: () -> RaiseTracker
+
+      # : () -> void
+      def initialize: () -> void
+
+      # Ref-counted: multiple probe sessions can be active at once
+      # (different targets, or nested probe calls) and all of them
+      # need this same pair of TracePoints running, but each pays only
+      # its own targeted :call/:return cost -- the untargeted :raise/
+      # :rescue subscription is shared, not duplicated per session.
+      # : () -> void
+      def acquire: () -> void
+
+      # : () -> void
+      def release: () -> void
+
+      # Call at :call time, before any work that could raise inside
+      # the hook itself -- a cheap Array#push that must not be skipped,
+      # or the matching pop_and_raised_exit? at :return would read the
+      # wrong checkpoint and desynchronize every later call on this
+      # fiber.
+      # : () -> void
+      def push_checkpoint: () -> void
+
+      # Call at :return time. Pops the checkpoint pushed by the
+      # matching push_checkpoint (calls on one fiber nest properly, so
+      # a plain stack -- not a per-target slot -- keeps recursive and
+      # interleaved targets correctly paired) and reports whether the
+      # counter moved since that call started.
+      # : () -> bool
+      def pop_and_raised_exit?: () -> bool
+
+      # Only meaningful right after pop_and_raised_exit? returned
+      # true: the class of the most recent :raise seen on this fiber,
+      # which is the exception currently unwinding through the
+      # caller's frame. Stale otherwise; callers must gate on
+      # pop_and_raised_exit?, not read this unconditionally.
+      # : () -> String?
+      def current_exception_class_name: () -> String?
+
+      private
+
+      # : () -> Integer
+      def counter: () -> Integer
+
+      # : (TracePoint tp) -> void
+      def on_raise: (TracePoint tp) -> void
+
+      # : () -> void
+      def on_rescue: () -> void
+
+      # : (Exception exception) -> String
+      def exception_class_name: (Exception exception) -> String
+    end
+  end
+end

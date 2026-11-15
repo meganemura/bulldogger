@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The gem ships RBS signatures in `sig/generated/`, written by rbs-inline from the type comments in `lib/` and checked with Steep. It leaves out the files that run inside the observed test process: the Minitest and RSpec integrations and the `exec`, `flt`, and `frames` collectors.
+
 ## 0.3.1
 
 ### The re-run a failure needs is now an explicit verb, not an automatic one

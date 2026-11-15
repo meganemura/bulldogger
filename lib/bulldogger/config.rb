@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 module Bulldogger
   # Sets bounded runtime policy for capture, redaction, and file output.
@@ -15,12 +16,20 @@ module Bulldogger
       /auth/i,
       /session/i,
       /cookie/i
-    ].freeze
+    ].freeze #: Array[Regexp]
 
-    attr_accessor :enabled, :output_dir, :max_frames, :max_locals,
-                   :max_value_length, :max_pending, :max_samples, :redact_patterns,
-                   :frame_source
+    attr_accessor :enabled #: bool
+    attr_accessor :output_dir #: String
+    attr_accessor :max_frames #: Integer
+    attr_accessor :max_locals #: Integer
+    attr_accessor :max_value_length #: Integer
+    attr_accessor :max_pending #: Integer
+    attr_accessor :max_samples #: Integer
+    attr_accessor :redact_patterns #: Array[Regexp | String]
+    # :auto, :capture_frames or :degraded
+    attr_accessor :frame_source #: Symbol
 
+    #: () -> void
     def initialize
       @enabled = true
       @output_dir = "tmp/bulldogger"
@@ -36,6 +45,7 @@ module Bulldogger
 
     private
 
+    #: () -> void
     def apply_env_overrides
       output_dir_override = ENV["BULLDOGGER_OUTPUT_DIR"]
       @output_dir = output_dir_override if output_dir_override && !output_dir_override.empty?

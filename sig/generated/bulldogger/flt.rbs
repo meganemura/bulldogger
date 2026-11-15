@@ -1,0 +1,13 @@
+# Generated from lib/bulldogger/flt.rb with RBS::Inline
+
+module Bulldogger
+  module Flt
+    SCHEMA_VERSION: ::Integer
+
+    # : (String fid, Array[String] command, ?index: String?, ?output_dir: String, ?stdout: IO, ?stderr: IO) -> (Process::Status | Integer)
+    def self?.run: (String fid, Array[String] command, ?index: String?, ?output_dir: String, ?stdout: IO, ?stderr: IO) -> (Process::Status | Integer)
+
+    # : (json summary) -> String
+    def self?.never_traced_note: (json summary) -> String
+  end
+end

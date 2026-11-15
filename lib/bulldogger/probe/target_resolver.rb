@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require_relative "target"
 
@@ -11,15 +12,17 @@ module Bulldogger
     # surface only after the caller's code has already started
     # running.
     module TargetResolver
-      INSTANCE_PATTERN = /\A(.+)#(.+)\z/
-      SINGLETON_PATTERN = /\A(.+)\.(.+)\z/
+      INSTANCE_PATTERN = /\A(.+)#(.+)\z/ #: Regexp
+      SINGLETON_PATTERN = /\A(.+)\.(.+)\z/ #: Regexp
 
       module_function
 
+      #: (Array[String] target_strings) -> Array[Target]
       def resolve!(target_strings)
         target_strings.map { |s| resolve_one!(s) }
       end
 
+      #: (String target_string) -> Target
       def resolve_one!(target_string)
         owner_name, method_name, kind = split(target_string)
         owner = resolve_constant!(owner_name, target_string)
@@ -28,6 +31,7 @@ module Bulldogger
         Target.new(target_string, unbound_method)
       end
 
+      #: (String target_string) -> [String, String, Symbol]
       def split(target_string)
         if (m = INSTANCE_PATTERN.match(target_string))
           [m[1], m[2], :instance]
@@ -46,6 +50,7 @@ module Bulldogger
       # accidentally resolves a same-named top-level constant that
       # const_get's own inherit-search could reach from a deeper
       # module (the `false` argument).
+      #: (String owner_name, String target_string) -> Module
       def resolve_constant!(owner_name, target_string)
         owner_name.split("::").reject(&:empty?).reduce(Object) do |mod, name|
           mod.const_get(name, false)
@@ -55,6 +60,7 @@ module Bulldogger
               "bulldogger: no constant #{owner_name.inspect} for probe target #{target_string.inspect}"
       end
 
+      #: (Module owner, String method_name, Symbol kind, String target_string) -> UnboundMethod
       def resolve_unbound_method!(owner, method_name, kind, target_string)
         if kind == :instance
           owner.instance_method(method_name.to_sym)
@@ -73,6 +79,7 @@ module Bulldogger
       # TracePoint built here is disabled again immediately -- its only
       # purpose is to surface that error before any of the caller's
       # targets go live.
+      #: (UnboundMethod unbound_method, String target_string) -> void
       def assert_targetable!(unbound_method, target_string)
         probe_tp = TracePoint.new(:call) {}
         probe_tp.enable(target: unbound_method)

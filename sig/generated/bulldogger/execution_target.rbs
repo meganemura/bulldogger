@@ -1,0 +1,61 @@
+# Generated from lib/bulldogger/execution_target.rb with RBS::Inline
+
+module Bulldogger
+  # Parses and validates targets for verbs that re-execute application frames.
+  # Collector launch and evidence writing stay in each verb.
+  module ExecutionTarget
+    FID_PATTERN: Regexp
+
+    class Target < Data
+      attr_reader path(): String
+
+      attr_reader method(): String
+
+      attr_reader index(): Integer
+
+      attr_reader root(): String
+
+      def self.new: (String path, String method, Integer index, String root) -> instance
+                  | (path: String, method: String, index: Integer, root: String) -> instance
+
+      def self.members: () -> [ :path, :method, :index, :root ]
+
+      def members: () -> [ :path, :method, :index, :root ]
+    end
+
+    class Target
+      # : (String verb, IO stderr) -> bool
+      def application_path?: (String verb, IO stderr) -> bool
+    end
+
+    # : (String fid, String verb) -> Target
+    def self?.parse: (String fid, String verb) -> Target
+
+    # : (Target target, index: String?, code_state: Hash[String, String?], verb: String, stderr: IO, fid: String) -> bool
+    def self?.acceptable?: (Target target, index: String?, code_state: Hash[String, String?], verb: String, stderr: IO, fid: String) -> bool
+
+    # : (String? index, Hash[String, String?] current, String verb, IO stderr) -> bool
+    def self?.index_state_matches?: (String? index, Hash[String, String?] current, String verb, IO stderr) -> bool
+
+    # flt/exec's own collectors gate on :call/:return only (a block has
+    # no Method object to resolve a targeted TracePoint against), so a
+    # block fid would silently produce an empty trace instead of
+    # failing. The index's "event" field catches this even when the fid
+    # text looks like an ordinary call -- a block nested in a def keeps
+    # its enclosing method's name (e.g. "branchy#2"), indistinguishable
+    # from a real call by pattern alone. Skipped without --index: there
+    # is no data source to tell a block from a call in that case, so a
+    # block fid run without an index still runs silently, as before.
+    # : (String fid, String? index, String verb, IO stderr) -> bool
+    def self?.addressable?: (String fid, String? index, String verb, IO stderr) -> bool
+
+    # : (String index, String fid) -> json?
+    def self?.frame_record: (String index, String fid) -> json?
+
+    # Walks the parent chain from a block frame to the nearest ancestor
+    # that application_path? would also accept: a call event (not a
+    # block) inside the application, not a gem or framework frame.
+    # : (String index, json record) -> String?
+    def self?.nearest_application_call: (String index, json record) -> String?
+  end
+end

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 module Bulldogger
   # Insertion-ordered, bounded map from an exception object to its
@@ -14,8 +15,17 @@ module Bulldogger
   # membership semantics would need the same identity-matching logic
   # this class already provides directly.
   class Pending
-    Entry = Struct.new(:exception, :snapshot)
+    Entry = Struct.new(
+      :exception, #: Exception
+      :snapshot #: snapshot
+    )
 
+    # @rbs @max_size: Integer
+    # @rbs @entries: Array[Entry]
+    # @rbs @evicted: Array[Exception]
+    # @rbs @mutex: Thread::Mutex
+
+    #: (Integer max_size) -> void
     def initialize(max_size)
       @max_size = max_size
       @entries = []
@@ -27,6 +37,7 @@ module Bulldogger
     # :raise again from the rescue frame. That second capture is worth
     # less than the first -- it points at the handler, not the bug --
     # so an exception already in the ring keeps its original snapshot.
+    #: (Exception exception, snapshot snapshot) -> nil
     def put(exception, snapshot)
       @mutex.synchronize do
         next if find(exception)
@@ -41,16 +52,19 @@ module Bulldogger
       nil
     end
 
+    #: (Exception exception) -> snapshot?
     def get(exception)
       @mutex.synchronize { find(exception)&.snapshot }
     end
 
+    #: (Exception exception) -> bool
     def evicted?(exception)
       @mutex.synchronize { @evicted.any? { |e| e.equal?(exception) } }
     end
 
     private
 
+    #: (Exception exception) -> Entry?
     def find(exception)
       @entries.find { |entry| entry.exception.equal?(exception) }
     end

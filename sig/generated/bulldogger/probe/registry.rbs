@@ -1,0 +1,22 @@
+# Generated from lib/bulldogger/probe/registry.rb with RBS::Inline
+
+module Bulldogger
+  module Probe
+    # Tracks which target labels currently have a live probe session,
+    # process-wide. Two concurrent sessions on the same method would
+    # each build their own TracePoint and double-count every call;
+    # the contract requires that be caught at start, by name, not
+    # discovered later as doubled statistics.
+    module Registry
+      self.@mutex: Thread::Mutex
+
+      self.@active: Hash[String, bool]
+
+      # : (Array[String] labels) -> void
+      def self.reserve!: (Array[String] labels) -> void
+
+      # : (Array[String] labels) -> void
+      def self.release: (Array[String] labels) -> void
+    end
+  end
+end

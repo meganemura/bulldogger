@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "json"
 
@@ -15,18 +16,20 @@ module Bulldogger
     # Samples are still diffed as a secondary signal, but only after
     # normalizing `0x[0-9a-f]+` out of them for exactly this reason.
     module Comparator
-      HEX_ADDRESS = /0x[0-9a-f]+/i
+      HEX_ADDRESS = /0x[0-9a-f]+/i #: Regexp
 
       module_function
 
+      #: (String path_a, String path_b) -> json
       def compare(path_a, path_b)
         a = JSON.parse(File.read(path_a))
         b = JSON.parse(File.read(path_b))
-        differences = []
+        differences = [] #: Array[String]
         compare_methods(a["methods"] || {}, b["methods"] || {}, differences)
         { "identical" => differences.empty?, "differences" => differences }
       end
 
+      #: (json methods_a, json methods_b, Array[String] differences) -> void
       def compare_methods(methods_a, methods_b, differences)
         (methods_a.keys | methods_b.keys).each do |label|
           ma = methods_a[label]
@@ -40,6 +43,7 @@ module Bulldogger
         end
       end
 
+      #: (String label, json ma, json mb, Array[String] differences) -> void
       def compare_method(label, ma, mb, differences)
         add_diff(differences, label, "calls", ma["calls"], mb["calls"])
         add_diff(differences, label, "raised_exits", ma["raised_exits"], mb["raised_exits"])
@@ -53,20 +57,23 @@ module Bulldogger
         compare_params(label, ma["params"] || {}, mb["params"] || {}, differences)
       end
 
+      #: (String label, json params_a, json params_b, Array[String] differences) -> void
       def compare_params(label, params_a, params_b, differences)
         (params_a.keys | params_b.keys).each do |name|
           compare_bucket("#{label} param #{name}", params_a[name], params_b[name], differences)
         end
       end
 
+      #: (String prefix, json? bucket_a, json? bucket_b, Array[String] differences) -> void
       def compare_bucket(prefix, bucket_a, bucket_b, differences)
-        bucket_a ||= {}
-        bucket_b ||= {}
+        bucket_a ||= {} #: json
+        bucket_b ||= {} #: json
         add_diff(differences, prefix, "classes", bucket_a["classes"], bucket_b["classes"])
         add_diff(differences, prefix, "nil_count", bucket_a["nil_count"], bucket_b["nil_count"])
         compare_samples(prefix, bucket_a["samples"] || [], bucket_b["samples"] || [], differences)
       end
 
+      #: (String prefix, Array[untyped] samples_a, Array[untyped] samples_b, Array[String] differences) -> void
       def compare_samples(prefix, samples_a, samples_b, differences)
         normalized_a = normalize_samples(samples_a)
         normalized_b = normalize_samples(samples_b)
@@ -76,6 +83,7 @@ module Bulldogger
                         "a=#{normalized_a.inspect} b=#{normalized_b.inspect}"
       end
 
+      #: (Array[untyped] samples) -> Array[untyped]
       def normalize_samples(samples)
         samples.map do |sample|
           next sample unless sample.is_a?(Hash) && sample["value"].is_a?(String)
@@ -84,6 +92,7 @@ module Bulldogger
         end
       end
 
+      #: (Array[String] differences, String label, String field, untyped value_a, untyped value_b) -> void
       def add_diff(differences, label, field, value_a, value_b)
         return if value_a == value_b
 

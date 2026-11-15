@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 module Bulldogger
   # Turns an arbitrary Ruby value into a bounded, JSON-safe String.
@@ -10,6 +11,10 @@ module Bulldogger
   class Formatter
     MAX_ELEMENTS = 10
 
+    # @rbs @max_value_length: Integer
+    # @rbs @redactor: Redactor
+
+    #: (config: Config, redactor: Redactor) -> void
     def initialize(config:, redactor:)
       @max_value_length = config.max_value_length
       @redactor = redactor
@@ -20,6 +25,7 @@ module Bulldogger
     # Those extra keys are the record that something was cut -- they
     # must never appear on a value that was not, so a reader can trust
     # their absence.
+    #: (untyped value) -> json
     def format(value)
       truncate_entry(render(value))
     end
@@ -27,12 +33,14 @@ module Bulldogger
     # Returns just the (possibly truncated) String, for JSON slots that
     # hold a plain string rather than a {"value"=>...} entry -- a
     # frame's "self", for example.
+    #: (untyped value) -> String
     def format_self(value)
       format(value)["value"]
     end
 
     private
 
+    #: (untyped value) -> String
     def render(value)
       case value
       when Array
@@ -44,6 +52,7 @@ module Bulldogger
       end
     end
 
+    #: (Array[untyped] array) -> String
     def render_array(array)
       kept = array.first(MAX_ELEMENTS)
       parts = kept.map { |element| render_nested(element) }
@@ -51,6 +60,7 @@ module Bulldogger
       "[#{parts.join(', ')}]"
     end
 
+    #: (Hash[untyped, untyped] hash) -> String
     def render_hash(hash)
       kept = hash.first(MAX_ELEMENTS)
       parts = kept.map { |key, value| render_pair(key, value) }
@@ -58,6 +68,7 @@ module Bulldogger
       "{#{parts.join(', ')}}"
     end
 
+    #: (untyped key, untyped value) -> String
     def render_pair(key, value)
       key_repr = render_nested(key)
       value_repr = @redactor.redact_key?(key) ? '"[REDACTED]"' : render_nested(value)
@@ -69,6 +80,7 @@ module Bulldogger
     # this, a self-referential or very deep structure could make a
     # single value's rendering unbounded even with max_value_length
     # trimming the end result.
+    #: (untyped value) -> String
     def render_nested(value)
       case value
       when Array then "[…]"
@@ -77,12 +89,14 @@ module Bulldogger
       end
     end
 
+    #: (untyped value) -> String
     def safe_inspect(value)
       value.inspect
     rescue Exception => e # rubocop:disable Lint/RescueException
       "#<#{safe_class_name(value)} (inspect raised #{e.class})>"
     end
 
+    #: (untyped value) -> String
     def safe_class_name(value)
       klass = value.class
       klass.respond_to?(:name) ? (klass.name || klass.to_s) : klass.to_s
@@ -90,11 +104,12 @@ module Bulldogger
       "Object"
     end
 
+    #: (String str) -> json
     def truncate_entry(str)
       return { "value" => str } if str.length <= @max_value_length
 
       {
-        "value" => str[0, @max_value_length] + "…",
+        "value" => "#{str[0, @max_value_length]}…",
         "truncated" => true,
         "original_length" => str.length
       }

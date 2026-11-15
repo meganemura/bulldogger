@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require_relative "redactor"
 require_relative "formatter"
@@ -19,6 +20,17 @@ module Bulldogger
   # Pending ring's size an actual memory bound, not just a count of
   # references to unbounded object graphs.
   class Capture
+    # @rbs @config: Config
+    # @rbs @redactor: Redactor
+    # @rbs @formatter: Formatter
+    # @rbs @frame_source: FrameSource
+    # @rbs @pending: Pending
+    # @rbs @trace_point: TracePoint?
+    # @rbs @start_mutex: Thread::Mutex
+    # @rbs @raise_count: Integer
+    # @rbs @checkpoint: Integer?
+
+    #: (config: Config) -> void
     def initialize(config:)
       @config = config
       @redactor = Redactor.new(config.redact_patterns)
@@ -31,6 +43,7 @@ module Bulldogger
       @checkpoint = nil
     end
 
+    #: () -> self
     def start
       @start_mutex.synchronize do
         return self if @trace_point
@@ -43,6 +56,7 @@ module Bulldogger
       self
     end
 
+    #: () -> self
     def stop
       @start_mutex.synchronize do
         @trace_point&.disable
@@ -51,24 +65,29 @@ module Bulldogger
       self
     end
 
+    #: () -> bool
     def running?
       !@trace_point.nil?
     end
 
+    #: (Exception exception) -> snapshot?
     def snapshot_for(exception)
       @pending.get(exception)
     end
 
+    #: () -> self
     def begin_test
       @checkpoint = @raise_count
       self
     end
 
+    #: () -> self
     def end_test
       @checkpoint = nil
       self
     end
 
+    #: (Exception exception) -> String
     def reason_for_missing(exception)
       return "capture_disabled" unless running?
       return "evicted" if @pending.evicted?(exception)
@@ -85,15 +104,17 @@ module Bulldogger
     # the app was raising. `rescue Exception`, not `StandardError`,
     # because even a NoMemoryError or SystemStackError surfacing from
     # our own code here must not propagate into the app's raise path.
+    #: (TracePoint tp) -> nil
     def handle_raise(tp)
       @raise_count += 1
       exception = tp.raised_exception
       frames, frames_omitted = @frame_source.capture(tp)
+      checkpoint = @checkpoint
       snapshot = {
         "capture_mode" => @frame_source.mode.to_s,
         "frames" => frames,
-        "raise_ordinal" => @checkpoint && @raise_count - @checkpoint
-      }
+        "raise_ordinal" => checkpoint && @raise_count - checkpoint
+      } #: snapshot
       # frames_omitted only appears when something was actually cut, so
       # its presence alone tells a reader "frames were dropped here" --
       # the same rule build_frame already applies to locals_omitted.
@@ -105,6 +126,7 @@ module Bulldogger
       nil
     end
 
+    #: () -> bool
     def debug?
       ENV["BULLDOGGER_DEBUG"] == "1"
     end

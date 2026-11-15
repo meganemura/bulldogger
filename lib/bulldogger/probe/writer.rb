@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "json"
 require_relative "../skill"
@@ -23,11 +24,17 @@ module Bulldogger
       @sequence = 0
       @mutex = Mutex.new
 
+      # @rbs!
+      #   def self.sequence: () -> Integer
+      #   def self.sequence=: (Integer) -> Integer
+      #   def self.mutex: () -> Thread::Mutex
+
       class << self
         attr_accessor :sequence
         attr_reader :mutex
       end
 
+      #: (run: Run, config: Config, targets: Array[Target], stats: Hash[String, MethodStats], started_at: Time) -> String?
       def self.write(run:, config:, targets:, stats:, started_at:)
         dir = run.dir
         return nil unless dir
@@ -38,16 +45,21 @@ module Bulldogger
         path
       end
 
+      #: () -> Integer
       def self.next_sequence
         mutex.synchronize { self.sequence += 1 }
       end
 
+      #: (Array[Target] targets) -> String
       def self.slug_for(targets)
         raw = targets.map(&:label).join("_")
-        raw.gsub(/[^A-Za-z0-9_-]/, "-")[0, 80]
+        raw.gsub(/[^A-Za-z0-9_-]/, "-")[0, 80].to_s
       end
 
+      #: (config: Config, targets: Array[Target], stats: Hash[String, MethodStats], started_at: Time) -> json
       def self.payload_for(config:, targets:, stats:, started_at:)
+        methods = {} #: Hash[String, json]
+        targets.each { |t| methods[t.label] = stats[t.label].to_h }
         payload = {
           # Readers can ignore the added skill key, so the compatible schema
           # change keeps version 1.
@@ -56,9 +68,9 @@ module Bulldogger
           "tool" => { "name" => "bulldogger", "version" => Bulldogger::VERSION },
           "started_at" => started_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
           "targets" => targets.map(&:label),
-          "methods" => targets.each_with_object({}) { |t, h| h[t.label] = stats[t.label].to_h },
+          "methods" => methods,
           "limits" => { "max_samples" => config.max_samples, "max_value_length" => config.max_value_length }
-        }
+        } #: json
         # Each evidence file carries a route to the instructions that explain
         # how an agent can use it.
         skill_file = Bulldogger::Skill.file

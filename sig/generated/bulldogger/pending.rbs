@@ -1,0 +1,55 @@
+# Generated from lib/bulldogger/pending.rb with RBS::Inline
+
+module Bulldogger
+  # Insertion-ordered, bounded map from an exception object to its
+  # captured snapshot. Bounded because most raises are caught and
+  # handled by the app and never become a test failure -- without a
+  # cap, a suite that raises-and-rescues heavily would grow this map
+  # without limit. Matches by object identity (`equal?`), not `hash`/
+  # `eql?`, so an exception class that overrides those can't collide
+  # with an unrelated exception instance.
+  #
+  # ObjectSpace::WeakMap was considered and rejected: its eviction is
+  # driven by GC timing, which we cannot observe or bound, and its
+  # membership semantics would need the same identity-matching logic
+  # this class already provides directly.
+  class Pending
+    class Entry < Struct[Exception | snapshot]
+      attr_accessor exception(): Exception
+
+      attr_accessor snapshot(): snapshot
+
+      def self.new: (?Exception exception, ?snapshot snapshot) -> instance
+                  | (?exception: Exception, ?snapshot: snapshot) -> instance
+    end
+
+    @max_size: Integer
+
+    @entries: Array[Entry]
+
+    @evicted: Array[Exception]
+
+    @mutex: Thread::Mutex
+
+    # : (Integer max_size) -> void
+    def initialize: (Integer max_size) -> void
+
+    # First-write-wins: a re-raised exception (rescue; raise) fires
+    # :raise again from the rescue frame. That second capture is worth
+    # less than the first -- it points at the handler, not the bug --
+    # so an exception already in the ring keeps its original snapshot.
+    # : (Exception exception, snapshot snapshot) -> nil
+    def put: (Exception exception, snapshot snapshot) -> nil
+
+    # : (Exception exception) -> snapshot?
+    def get: (Exception exception) -> snapshot?
+
+    # : (Exception exception) -> bool
+    def evicted?: (Exception exception) -> bool
+
+    private
+
+    # : (Exception exception) -> Entry?
+    def find: (Exception exception) -> Entry?
+  end
+end

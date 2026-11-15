@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "json"
 require_relative "version"
@@ -17,6 +18,12 @@ module Bulldogger
   class Evidence
     SLUG_MAX_LENGTH = 80
 
+    # @rbs @config: Config
+    # @rbs @run: Run
+    # @rbs @capture: Capture
+    # @rbs @code_state: Hash[String, String?]
+
+    #: (config: Config, run: Run, capture: Capture, ?code_state: Hash[String, String?]) -> void
     def initialize(config:, run:, capture:, code_state: CodeState.capture)
       @config = config
       @run = run
@@ -24,6 +31,7 @@ module Bulldogger
       @code_state = code_state
     end
 
+    #: (exception: Exception?, test: test_info?) -> String?
     def record_failure(exception:, test:)
       # A disabled switch means "wrote nothing" -- not "wrote an empty
       # missed record". Writing capture_mode: missed here would mean
@@ -42,6 +50,7 @@ module Bulldogger
 
     private
 
+    #: (exception: Exception, test: test_info?) -> json
     def build_payload(exception:, test:)
       snapshot = @capture.snapshot_for(exception)
       payload = {
@@ -58,7 +67,7 @@ module Bulldogger
         "test" => normalize_test(test),
         "exception" => build_exception_section(exception),
         "frames" => snapshot ? snapshot["frames"] : []
-      }
+      } #: json
       # The failure output must lead an agent to the skill at the moment of
       # need. The evidence path alone gives no route to those instructions.
       skill_file = Bulldogger::Skill.file
@@ -70,13 +79,14 @@ module Bulldogger
       payload
     end
 
+    #: (Exception exception) -> json
     def build_exception_section(exception)
       message = exception.message.to_s
       limit = @config.max_value_length * 5
       section = {
         "class" => exception_class_name(exception),
         "message" => message.length > limit ? "#{message[0, limit]}…" : message
-      }
+      } #: json
       if message.length > limit
         section["message_truncated"] = true
         section["message_original_length"] = message.length
@@ -85,14 +95,16 @@ module Bulldogger
       section
     end
 
+    #: (Exception exception) -> String
     def exception_class_name(exception)
       exception.class.name || exception.class.to_s
     rescue Exception # rubocop:disable Lint/RescueException
       "Object"
     end
 
+    #: (test_info? test) -> json
     def normalize_test(test)
-      test ||= {}
+      test ||= {} #: test_info
       {
         "framework" => test[:framework],
         "id" => test[:id],
@@ -101,6 +113,7 @@ module Bulldogger
       }
     end
 
+    #: () -> Hash[String, Integer]
     def limits_section
       {
         "max_frames" => @config.max_frames,
@@ -109,6 +122,7 @@ module Bulldogger
       }
     end
 
+    #: (test_info? test) -> String
     def slug_for(test)
       raw = (test && test[:id] || "unknown").to_s
       raw.gsub(/[^A-Za-z0-9_-]/, "-")[0, SLUG_MAX_LENGTH]

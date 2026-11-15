@@ -1,0 +1,37 @@
+# Generated from lib/bulldogger/config.rb with RBS::Inline
+
+module Bulldogger
+  # Sets bounded runtime policy for capture, redaction, and file output.
+  # It does not start capture work.
+  # Environment overrides let a child change policy without app file changes.
+  class Config
+    DEFAULT_REDACT_PATTERNS: Array[Regexp]
+
+    attr_accessor enabled: bool
+
+    attr_accessor output_dir: String
+
+    attr_accessor max_frames: Integer
+
+    attr_accessor max_locals: Integer
+
+    attr_accessor max_value_length: Integer
+
+    attr_accessor max_pending: Integer
+
+    attr_accessor max_samples: Integer
+
+    attr_accessor redact_patterns: Array[Regexp | String]
+
+    # :auto, :capture_frames or :degraded
+    attr_accessor frame_source: Symbol
+
+    # : () -> void
+    def initialize: () -> void
+
+    private
+
+    # : () -> void
+    def apply_env_overrides: () -> void
+  end
+end

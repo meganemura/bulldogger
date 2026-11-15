@@ -1,0 +1,83 @@
+# Generated from lib/bulldogger/probe/session.rb with RBS::Inline
+
+module Bulldogger
+  module Probe
+    # One probe run: resolves and reserves its targets, builds one
+    # TracePoint per target (enabling one TracePoint on a second
+    # target raises ArgumentError: "can't nest-enable a targeting
+    # TracePoint", measured directly -- so this session needs one
+    # TracePoint object per target, not one shared TracePoint reused
+    # across targets), aggregates every observed call/return into
+    # MethodStats, and writes the evidence file on finish.
+    class Session
+      @result_path: String?
+
+      @finish_mutex: Thread::Mutex
+
+      @finished: bool
+
+      @started_at: Time
+
+      @trace_points: Array[TracePoint]
+
+      @stats: Hash[String, MethodStats]
+
+      @formatter: Formatter
+
+      @redactor: Redactor
+
+      @run: Run
+
+      @config: Config
+
+      @targets: Array[Target]
+
+      # : (Array[String] target_strings, config: Config, run: Run) -> Session?
+      def self.start: (Array[String] target_strings, config: Config, run: Run) -> Session?
+
+      # : (Array[String] target_strings, config: Config, run: Run) ?{ () -> void } -> String?
+      def self.run: (Array[String] target_strings, config: Config, run: Run) ?{ () -> void } -> String?
+
+      # : (targets: Array[Target], config: Config, run: Run) -> void
+      def initialize: (targets: Array[Target], config: Config, run: Run) -> void
+
+      # : () -> self
+      def enable!: () -> self
+
+      # : () -> String?
+      def finish: () -> String?
+
+      private
+
+      # A one-line delegation, matching every other hook in this
+      # codebase (Capture, RaiseTracker): the block
+      # given to TracePoint.new does no work itself, it only calls a
+      # named method. That method is what a direct unit test calls
+      # too, with a double standing in for tp, so this hook's own
+      # routing logic is covered by an ordinary test and not just by
+      # the hook actually firing (which stdlib Coverage cannot see
+      # inside).
+      # : (MethodStats stats) -> TracePoint
+      def build_trace_point: (MethodStats stats) -> TracePoint
+
+      # Delegating the block body to this named method adds one real
+      # call frame between the app's own call site and where
+      # caller_locations runs -- measured directly (the block calling
+      # a method that calls caller_locations puts one extra frame
+      # under caller_locations, versus caller_locations running
+      # straight inside the block) -- so the offset here is 3, not the
+      # 2 a bare inline block needed before this method existed.
+      # probe_caller_offset_test.rb pins this number against this
+      # exact shape.
+      #
+      # Only the first frame is ever kept (`.first` was called on a
+      # 3-frame array before this hook existed), so only 1 frame is
+      # requested here. Measured at ~300ns/call, caller_locations is
+      # the single most expensive thing this hook does -- 4-5x the
+      # cost of TracePoint's own dispatch -- and building frames this
+      # code never reads was pure waste.
+      # : (TracePoint tp, MethodStats stats) -> void
+      def dispatch: (TracePoint tp, MethodStats stats) -> void
+    end
+  end
+end

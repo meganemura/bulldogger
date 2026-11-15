@@ -1,0 +1,157 @@
+# Generated from lib/bulldogger/probe/method_stats.rb with RBS::Inline
+
+module Bulldogger
+  module Probe
+    # Aggregates every :call/:return pair observed for one probe
+    # target into the "methods"[label] shape the evidence JSON
+    # publishes: call count, per-parameter and return-value shape, the
+    # raise-exit count, and the set of call sites.
+    #
+    # record_call/record_return take no lock: each caller writes only
+    # into its own ThreadLocal (below), reached through Thread.current[]
+    # -- fiber-local, like RaiseTracker's own storage, so two fibers on
+    # the same OS thread still get separate slots -- keyed uniquely to
+    # this MethodStats instance, so two threads calling the same probed
+    # method concurrently never touch the same mutable state. A per-call
+    # Mutex#synchronize was measured to be on the hot path for every
+    # single call and return; a fiber only pays a lock once -- the first
+    # time it is ever seen by this target, to register its ThreadLocal
+    # in @locals -- and #to_h folds every one of them into the published
+    # totals exactly once, at finish time.
+    class MethodStats
+      # A caller's "path:line" -> [calls seen from it, its location]
+      type callers = Hash[String, [ Integer, Thread::Backtrace::Location ]]
+
+      class ThreadLocal < Struct[Integer | Hash[String, Bucket] | Bucket | Hash[String, Integer] | callers]
+        attr_accessor calls(): Integer
+
+        attr_accessor raised_exits(): Integer
+
+        attr_accessor param_buckets(): Hash[String, Bucket]
+
+        attr_accessor returns(): Bucket
+
+        attr_accessor raised(): Hash[String, Integer]
+
+        attr_accessor callers(): callers
+
+        def self.new: (?Integer calls, ?Integer raised_exits, ?Hash[String, Bucket] param_buckets, ?Bucket returns, ?Hash[String, Integer] raised, ?callers callers) -> instance
+                    | (?calls: Integer, ?raised_exits: Integer, ?param_buckets: Hash[String, Bucket], ?returns: Bucket, ?raised: Hash[String, Integer], ?callers: callers) -> instance
+      end
+
+      @merged: bool
+
+      @merge_mutex: Thread::Mutex
+
+      @locals_mutex: Thread::Mutex
+
+      @locals: Array[ThreadLocal]
+
+      @thread_key: Symbol
+
+      @callers: callers
+
+      @raised: Hash[String, Integer]
+
+      @returns: Bucket
+
+      @param_buckets: Hash[String, Bucket]
+
+      @raised_exits: Integer
+
+      @calls: Integer
+
+      @parameters: Array[[ String, String? ]]
+
+      @max_samples: Integer
+
+      @redactor: Redactor
+
+      @formatter: Formatter
+
+      # : (target: Target, formatter: Formatter, redactor: Redactor, max_samples: Integer) -> void
+      def initialize: (target: Target, formatter: Formatter, redactor: Redactor, max_samples: Integer) -> void
+
+      # : (TracePoint tp, Thread::Backtrace::Location? caller_location) -> void
+      def record_call: (TracePoint tp, Thread::Backtrace::Location? caller_location) -> void
+
+      # raised: true means RaiseTracker's raise-exit discriminator
+      # fired for this return -- this call must not be counted as a
+      # nil return (that would fabricate a "returned nil" the method
+      # never actually did), so it updates the thread-local @raised
+      # instead of @returns and never touches the returns bucket at
+      # all.
+      # : (TracePoint tp, raised: bool) -> void
+      def record_return: (TracePoint tp, raised: bool) -> void
+
+      # : () -> json
+      def to_h: () -> json
+
+      private
+
+      # UnboundMethod#parameters is declared, static shape -- computed
+      # once here, not derived from tp.parameters per call, since it
+      # cannot change between calls and re-deriving it every time would
+      # only add cost with no new information.
+      # : (UnboundMethod unbound_method) -> Array[[String, String?]]
+      def declared_parameters: (UnboundMethod unbound_method) -> Array[[ String, String? ]]
+
+      # : () -> Hash[String, Bucket]
+      def build_param_buckets: () -> Hash[String, Bucket]
+
+      # : () -> Bucket
+      def new_returns_bucket: () -> Bucket
+
+      # Lazily creates and registers this fiber's ThreadLocal on
+      # first touch. @locals_mutex is taken only here -- once per
+      # fiber per target, not once per call -- to append to the
+      # shared registry that #merge! later reads.
+      # : () -> ThreadLocal
+      def thread_local: () -> ThreadLocal
+
+      # : (ThreadLocal local, Binding binding) -> void
+      def record_param_samples: (ThreadLocal local, Binding binding) -> void
+
+      # Tallies by a "path:lineno" String built from two cheap
+      # attribute reads, not by Location#to_s (which additionally
+      # resolves and formats a method label on every single call).
+      # Measured directly: this key plus one Hash lookup costs about
+      # half of the old to_s-keyed lookup. An Array key ([path,
+      # lineno]) was tried first and measured *slower* than the
+      # to_s baseline it was meant to beat -- Array#hash and #eql?
+      # walk and hash every element on every lookup, so a compound
+      # object is not automatically a cheap Hash key. A String is.
+      #
+      # One Hash lookup, not two: the value is a mutable [count,
+      # location] pair, so an existing entry is updated in place
+      # (cheap, no second Hash op) and only a first-time key pays for
+      # a Hash write. The full "path:line:in 'label'" String -- what
+      # the evidence actually publishes -- is built from the stored
+      # Location at most once per distinct call site, in
+      # #callers_to_h, not once per call.
+      # : (ThreadLocal local, Thread::Backtrace::Location? caller_location) -> void
+      def record_caller: (ThreadLocal local, Thread::Backtrace::Location? caller_location) -> void
+
+      # Runs once, the first time #to_h is called: folds every
+      # fiber's ThreadLocal into the published totals under
+      # @merge_mutex, so #to_h itself can be called more than once
+      # (Writer calls it exactly once per target today) without
+      # double-counting.
+      # : () -> void
+      def merge!: () -> void
+
+      # : (ThreadLocal local) -> void
+      def merge_local: (ThreadLocal local) -> void
+
+      # : () -> Hash[String, json]
+      def params_to_h: () -> Hash[String, json]
+
+      # Location#to_s (the "path:line:in 'label'" format the evidence
+      # publishes) runs here, once per distinct call site total across
+      # every fiber -- not once per call, which is what made this the
+      # single most expensive part of the hook before this task.
+      # : () -> Hash[String, Integer]
+      def callers_to_h: () -> Hash[String, Integer]
+    end
+  end
+end

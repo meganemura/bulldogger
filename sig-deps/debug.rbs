@@ -1,0 +1,5 @@
+# The part of debug.gem's frame capture that lib/ calls. debug is a
+# development dependency and loads only when the app's bundle has it.
+module DEBUGGER__
+  def self.capture_frames: (String skip_path_prefix) -> Array[untyped]
+end

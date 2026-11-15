@@ -1,0 +1,18 @@
+# Generated from lib/bulldogger/exec.rb with RBS::Inline
+
+module Bulldogger
+  # Runs one command with one addressed statement injection.
+  # The collector owns frame selection and statement evaluation.
+  module Exec
+    SCHEMA_VERSION: ::Integer
+
+    # : (String fid, Array[String] command, line: Integer, statement: String, ?visit: Integer, ?index: String?, ?output_dir: String, ?stdout: IO, ?stderr: IO) -> (Process::Status | Integer)
+    def self?.run: (String fid, Array[String] command, line: Integer, statement: String, ?visit: Integer, ?index: String?, ?output_dir: String, ?stdout: IO, ?stderr: IO) -> (Process::Status | Integer)
+
+    # : (json summary) -> String
+    def self?.never_traced_note: (json summary) -> String
+
+    # : (String fid, json summary) -> String
+    def self?.never_evaluated_note: (String fid, json summary) -> String
+  end
+end

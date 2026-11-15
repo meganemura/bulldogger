@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "fileutils"
 require "json"
@@ -13,6 +14,7 @@ module Bulldogger
 
     module_function
 
+    #: (Array[String] command, ?output_dir: String, ?stdout: IO | StringIO) -> Process::Status
     def run(command, output_dir: ENV.fetch("BULLDOGGER_OUTPUT_DIR", "tmp/bulldogger"), stdout: $stdout)
       raise ArgumentError, "frames requires a command after --" if command.empty?
 
@@ -29,6 +31,7 @@ module Bulldogger
       status
     end
 
+    #: (String path, Array[String] command, Process::Status status) -> void
     def append_envelope(path, command, status)
       summary = read_summary(path)
       envelope = {
@@ -44,6 +47,7 @@ module Bulldogger
     end
     private_class_method :append_envelope
 
+    #: (String path) -> json
     def read_summary(path)
       return {} unless File.file?(path)
 
@@ -54,6 +58,7 @@ module Bulldogger
     end
     private_class_method :read_summary
 
+    #: (Array[String] command) -> Integer?
     def seed_from(command)
       index = command.index("--seed")
       return Integer(command[index + 1], 10) if index && command[index + 1]
@@ -65,6 +70,7 @@ module Bulldogger
     end
     private_class_method :seed_from
 
+    #: (Process::Status status) -> String
     def outcome(status)
       return "pass" if status.success?
       return "error" if status.signaled?

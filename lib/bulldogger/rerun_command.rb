@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "shellwords"
 
@@ -8,6 +9,7 @@ module Bulldogger
   module RerunCommand
     module_function
 
+    #: (test_info? test) -> String?
     def build(test)
       return nil unless test && test[:file] && test[:seed]
 
@@ -20,14 +22,17 @@ module Bulldogger
       arguments && Shellwords.join(arguments)
     end
 
+    #: (test_info test) -> String?
     def minitest_method(test)
       test[:id].to_s.split("#", 2)[1]
     end
 
+    #: (test_info test) -> String?
     def rspec_location(test)
       "#{test[:file]}:#{test[:line]}" if test[:file] && test[:line]
     end
 
+    #: (test_info test) -> Array[String]?
     def minitest_arguments(test)
       method_name = minitest_method(test)
       return nil unless method_name
@@ -37,6 +42,7 @@ module Bulldogger
     end
     private_class_method :minitest_arguments
 
+    #: (test_info test) -> Array[String]?
     def rspec_arguments(test)
       location = rspec_location(test)
       return nil unless location

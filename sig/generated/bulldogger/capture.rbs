@@ -1,0 +1,74 @@
+# Generated from lib/bulldogger/capture.rb with RBS::Inline
+
+module Bulldogger
+  # Subscribes to :raise globally and turns every raised exception into
+  # a bounded, already-serialized snapshot before the hook returns.
+  #
+  # Serialization happens here, inside the hook, rather than later from
+  # whatever holds the frame data: a DEBUGGER__::FrameInfo keeps its
+  # frame's Binding alive, and a live Binding keeps every object
+  # reachable from that frame alive too (measured: the TracePoint
+  # block's own captured-array local was still reachable through a
+  # retained Binding). Rendering every value to a String and dropping
+  # the FrameInfo/Binding before this method returns is what makes the
+  # Pending ring's size an actual memory bound, not just a count of
+  # references to unbounded object graphs.
+  class Capture
+    @checkpoint: Integer?
+
+    @raise_count: Integer
+
+    @start_mutex: Thread::Mutex
+
+    @trace_point: TracePoint?
+
+    @pending: Pending
+
+    @frame_source: FrameSource
+
+    @formatter: Formatter
+
+    @redactor: Redactor
+
+    @config: Config
+
+    # : (config: Config) -> void
+    def initialize: (config: Config) -> void
+
+    # : () -> self
+    def start: () -> self
+
+    # : () -> self
+    def stop: () -> self
+
+    # : () -> bool
+    def running?: () -> bool
+
+    # : (Exception exception) -> snapshot?
+    def snapshot_for: (Exception exception) -> snapshot?
+
+    # : () -> self
+    def begin_test: () -> self
+
+    # : () -> self
+    def end_test: () -> self
+
+    # : (Exception exception) -> String
+    def reason_for_missing: (Exception exception) -> String
+
+    private
+
+    # :raise fires for every exception, including ones the app rescues
+    # and handles without incident. This hook must never let an
+    # exception escape: doing so would replace the app's real raise
+    # with one from inside our own hook, corrupting the very failure
+    # the app was raising. `rescue Exception`, not `StandardError`,
+    # because even a NoMemoryError or SystemStackError surfacing from
+    # our own code here must not propagate into the app's raise path.
+    # : (TracePoint tp) -> nil
+    def handle_raise: (TracePoint tp) -> nil
+
+    # : () -> bool
+    def debug?: () -> bool
+  end
+end

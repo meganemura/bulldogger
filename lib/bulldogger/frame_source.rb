@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 module Bulldogger
   # Turns a :raise TracePoint event into a bounded array of frame
@@ -10,6 +11,13 @@ module Bulldogger
   # so under Bundler it is only present when the app's own Gemfile asks
   # for it.
   class FrameSource
+    # @rbs @config: Config
+    # @rbs @formatter: Formatter
+    # @rbs @redactor: Redactor
+    # @rbs @skip_path_prefix: String
+    # @rbs @mode: Symbol?
+
+    #: (config: Config, formatter: Formatter, redactor: Redactor, ?skip_path_prefix: String) -> void
     def initialize(config:, formatter:, redactor:, skip_path_prefix: self.class.default_skip_path_prefix)
       @config = config
       @formatter = formatter
@@ -23,28 +31,33 @@ module Bulldogger
     # the given prefix; pointing it at the app's own lib directory was
     # measured to make the app's frames disappear instead of ours,
     # leaving a snapshot with zero useful frames.
+    #: () -> String
     def self.default_skip_path_prefix
-      File.expand_path("..", __dir__)
+      File.expand_path("..", __dir__.to_s)
     end
 
     # :auto resolves once, here, and is cached for the life of this
     # object -- not re-checked on every raise, which would repeat a
     # `require` check thousands of times in a large suite.
+    #: () -> self
     def resolve!
       @mode ||= resolve_mode
       self
     end
 
+    #: () -> Symbol
     def mode
       @mode ||= resolve_mode
     end
 
+    #: (TracePoint tp) -> [Array[json], Integer]
     def capture(tp)
       mode == :capture_frames ? capture_via_debugger(tp) : capture_degraded(tp)
     end
 
     private
 
+    #: () -> Symbol
     def resolve_mode
       configured = @config.frame_source
       return :degraded if configured == :degraded
@@ -60,6 +73,7 @@ module Bulldogger
       configured
     end
 
+    #: () -> bool
     def capture_frames_available?
       require "debug/frame_info"
       DEBUGGER__.respond_to?(:capture_frames)
@@ -67,6 +81,7 @@ module Bulldogger
       false
     end
 
+    #: (TracePoint tp) -> [Array[json], Integer]
     def capture_via_debugger(tp)
       frame_infos = DEBUGGER__.capture_frames(@skip_path_prefix)
       kept = frame_infos.first(@config.max_frames)
@@ -74,6 +89,7 @@ module Bulldogger
       [frames, frame_infos.size - kept.size]
     end
 
+    #: (untyped frame_info, Integer index) -> json
     def build_frame(frame_info, index)
       location = frame_info.location
       frame = {
@@ -82,7 +98,7 @@ module Bulldogger
         "line" => location&.lineno,
         "label" => frame_info.name,
         "self" => @formatter.format_self(frame_info.self)
-      }
+      } #: json
       binding = frame_info.binding
       locals, locals_omitted = binding ? build_locals(binding) : [{}, 0]
       frame["locals"] = locals
@@ -90,6 +106,7 @@ module Bulldogger
       frame
     end
 
+    #: (TracePoint tp) -> [Array[json], Integer]
     def capture_degraded(tp)
       locations = degraded_locations(tp)
       kept = locations.first(@config.max_frames)
@@ -97,6 +114,7 @@ module Bulldogger
       [frames, locations.size - kept.size]
     end
 
+    #: (TracePoint tp) -> Array[Thread::Backtrace::Location]
     def degraded_locations(tp)
       locations = tp.raised_exception.backtrace_locations
       return locations if locations
@@ -107,13 +125,14 @@ module Bulldogger
       Array(caller_locations).reject { |location| location.path&.start_with?(@skip_path_prefix) }
     end
 
+    #: (TracePoint tp, Thread::Backtrace::Location location, Integer index) -> json
     def build_degraded_frame(tp, location, index)
       frame = {
         "index" => index,
         "path" => location.path,
         "line" => location.lineno,
         "label" => location.label
-      }
+      } #: json
       if index.zero?
         locals, locals_omitted = build_frame0_locals(tp)
         frame["locals"] = locals
@@ -125,19 +144,22 @@ module Bulldogger
       frame
     end
 
+    #: (TracePoint tp) -> [Hash[String, json], Integer]
     def build_frame0_locals(tp)
       binding = tp.binding
       binding ? build_locals(binding) : [{}, 0]
     end
 
+    #: (Binding binding) -> [Hash[String, json], Integer]
     def build_locals(binding)
       names = binding.local_variables
       kept = names.first(@config.max_locals)
-      locals = {}
+      locals = {} #: Hash[String, json]
       kept.each { |name| locals[name.to_s] = build_local_entry(name, binding) }
       [locals, names.size - kept.size]
     end
 
+    #: (Symbol name, Binding binding) -> json
     def build_local_entry(name, binding)
       return { "redacted" => true, "reason" => "name" } if @redactor.redact_name?(name)
 

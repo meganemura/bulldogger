@@ -1,0 +1,19 @@
+# Generated from lib/bulldogger/skill.rb with RBS::Inline
+
+module Bulldogger
+  # Resolves the skill for all evidence writers and the CLI. It does not
+  # install the skill or decide how a caller presents the resolved path.
+  # One resolver keeps every evidence format and the CLI in agreement.
+  module Skill
+    ROOT: untyped
+
+    # : (?String root) -> String?
+    def self.path: (?String root) -> String?
+
+    # : (?String root) -> String?
+    def self.file: (?String root) -> String?
+  end
+
+  # : () -> String?
+  def self.skill_path: () -> String?
+end

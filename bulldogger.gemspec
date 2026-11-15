@@ -32,7 +32,7 @@ Gem::Specification.new do |spec|
   # bulldogger for the first time meets it through a failure message,
   # with no network: the schema reference and the skill must already be
   # on disk next to the code that wrote the file.
-  spec.files = Dir["lib/**/*.rb", "exe/**", "docs/**/*.md", "skills/**/*.md", "README.md", "README.ja.md", "CHANGELOG.md", "LICENSE*"]
+  spec.files = Dir["lib/**/*.rb", "sig/**/*.rbs", "exe/**", "docs/**/*.md", "skills/**/*.md", "README.md", "README.ja.md", "CHANGELOG.md", "LICENSE*"]
   spec.bindir = "exe"
   spec.executables = ["bulldogger"]
   spec.require_paths = ["lib"]
@@ -45,4 +45,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "= 3.13.2"
   spec.add_development_dependency "debug", "= 1.11.1"
   spec.add_development_dependency "hegeltest", "= 0.1.0"
+  # rbs-inline writes sig/generated from the type comments in lib/, and Steep checks lib/ against it.
+  spec.add_development_dependency "rbs-inline", "= 0.14.0"
+  spec.add_development_dependency "steep", "= 2.1.0"
 end

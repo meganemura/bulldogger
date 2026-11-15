@@ -1,0 +1,43 @@
+# Generated from lib/bulldogger/probe/writer.rb with RBS::Inline
+
+module Bulldogger
+  module Probe
+    # Writes one probe session's aggregated MethodStats as
+    # tmp/bulldogger/run-.../probe-NNN-<slug>.json.
+    # Probe collection stays outside this module; this module only formats
+    # and writes the completed statistics.
+    #
+    # Filenames use their own "probe-NNN-" sequence, not Run#next_path
+    # (which produces plain "NNN-<slug>.json" for failure evidence):
+    # Run is owned by the base-snapshot task and not touched here, and
+    # its sequence and this one are independent counters that happen
+    # to share a directory, not a single numbering space. Run#dir is
+    # still used for the lazy, on-first-write mkdir: probe is an
+    # explicit verb (AGENTS.md), so unlike a green test suite, a
+    # session that finished is itself the request to write, and does
+    # so even if it observed zero calls.
+    module Writer
+      def self.sequence: () -> Integer
+
+      def self.sequence=: (Integer) -> Integer
+
+      def self.mutex: () -> Thread::Mutex
+
+      attr_accessor sequence: untyped
+
+      attr_reader mutex: untyped
+
+      # : (run: Run, config: Config, targets: Array[Target], stats: Hash[String, MethodStats], started_at: Time) -> String?
+      def self.write: (run: Run, config: Config, targets: Array[Target], stats: Hash[String, MethodStats], started_at: Time) -> String?
+
+      # : () -> Integer
+      def self.next_sequence: () -> Integer
+
+      # : (Array[Target] targets) -> String
+      def self.slug_for: (Array[Target] targets) -> String
+
+      # : (config: Config, targets: Array[Target], stats: Hash[String, MethodStats], started_at: Time) -> json
+      def self.payload_for: (config: Config, targets: Array[Target], stats: Hash[String, MethodStats], started_at: Time) -> json
+    end
+  end
+end

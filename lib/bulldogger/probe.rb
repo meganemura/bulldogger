@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require_relative "redactor"
 require_relative "formatter"
@@ -22,14 +23,17 @@ module Bulldogger
   # from a method that legitimately returns nil; see
   # raise_tracker.rb).
   module Probe
+    #: (Array[String] target_strings, config: Config, run: Run) -> Session?
     def self.start(target_strings, config:, run:)
       Session.start(target_strings, config: config, run: run)
     end
 
+    #: (Array[String] target_strings, config: Config, run: Run) { () -> void } -> String?
     def self.call(target_strings, config:, run:, &block)
       Session.run(target_strings, config: config, run: run, &block)
     end
 
+    #: (String path_a, String path_b) -> untyped
     def self.compare(path_a, path_b)
       Comparator.compare(path_a, path_b)
     end

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "digest"
 require "open3"
@@ -11,6 +12,7 @@ module Bulldogger
 
     # Git commands cost milliseconds, so callers compute this marker once per run.
     # Raise hooks must not call this method.
+    #: (?String directory) -> Hash[String, String?]
     def capture(directory = Dir.pwd)
       sha, sha_status = git(directory, "rev-parse", "HEAD")
       return null_state unless sha_status.success?
@@ -26,12 +28,14 @@ module Bulldogger
       null_state
     end
 
+    #: (String directory, *String arguments) -> [String, Process::Status]
     def git(directory, *arguments)
       stdout, _stderr, status = Open3.capture3("git", "-C", directory, *arguments)
       [stdout, status]
     end
     private_class_method :git
 
+    #: () -> Hash[String, String?]
     def null_state
       { "git_sha" => nil, "dirty_digest" => nil }
     end

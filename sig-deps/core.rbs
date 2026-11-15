@@ -1,0 +1,4 @@
+# Core methods that lib/ calls and RBS 4.2 does not declare.
+module Process
+  def self.spawn: (Hash[String, String] env, *String command) -> Integer
+end

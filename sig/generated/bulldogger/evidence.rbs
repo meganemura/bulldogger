@@ -1,0 +1,50 @@
+# Generated from lib/bulldogger/evidence.rb with RBS::Inline
+
+module Bulldogger
+  # Writes stored failure data from one captured snapshot.
+  # Capture owns runtime observation; this class does not observe it.
+  #
+  # The exception's message and backtrace are read here, at report
+  # time, not inside the :raise hook. Exception#backtrace can still be
+  # nil when :raise fires -- Ruby fills it in as the exception
+  # unwinds -- so reading it from the hook would record less than what
+  # a test framework's own failure report already has by the time it
+  # calls record_failure.
+  class Evidence
+    SLUG_MAX_LENGTH: ::Integer
+
+    @config: Config
+
+    @run: Run
+
+    @capture: Capture
+
+    @code_state: Hash[String, String?]
+
+    # : (config: Config, run: Run, capture: Capture, ?code_state: Hash[String, String?]) -> void
+    def initialize: (config: Config, run: Run, capture: Capture, ?code_state: Hash[String, String?]) -> void
+
+    # : (exception: Exception?, test: test_info?) -> String?
+    def record_failure: (exception: Exception?, test: test_info?) -> String?
+
+    private
+
+    # : (exception: Exception, test: test_info?) -> json
+    def build_payload: (exception: Exception, test: test_info?) -> json
+
+    # : (Exception exception) -> json
+    def build_exception_section: (Exception exception) -> json
+
+    # : (Exception exception) -> String
+    def exception_class_name: (Exception exception) -> String
+
+    # : (test_info? test) -> json
+    def normalize_test: (test_info? test) -> json
+
+    # : () -> Hash[String, Integer]
+    def limits_section: () -> Hash[String, Integer]
+
+    # : (test_info? test) -> String
+    def slug_for: (test_info? test) -> String
+  end
+end

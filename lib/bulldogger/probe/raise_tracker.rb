@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 module Bulldogger
   module Probe
@@ -42,10 +43,19 @@ module Bulldogger
       STACK_KEY = :bulldogger_probe_raise_checkpoints
       CLASS_KEY = :bulldogger_probe_raise_class
 
+      # @rbs self.@instance: RaiseTracker?
+
+      # @rbs @mutex: Thread::Mutex
+      # @rbs @refcount: Integer
+      # @rbs @raise_tp: TracePoint?
+      # @rbs @rescue_tp: TracePoint?
+
+      #: () -> RaiseTracker
       def self.instance
         @instance ||= new
       end
 
+      #: () -> void
       def initialize
         @mutex = Mutex.new
         @refcount = 0
@@ -58,18 +68,20 @@ module Bulldogger
       # need this same pair of TracePoints running, but each pays only
       # its own targeted :call/:return cost -- the untargeted :raise/
       # :rescue subscription is shared, not duplicated per session.
+      #: () -> void
       def acquire
         @mutex.synchronize do
           @refcount += 1
           next unless @refcount == 1
 
-          @raise_tp = TracePoint.new(:raise) { |tp| on_raise(tp) }
-          @rescue_tp = TracePoint.new(:rescue) { on_rescue }
-          @raise_tp.enable
-          @rescue_tp.enable
+          raise_tp = @raise_tp = TracePoint.new(:raise) { |tp| on_raise(tp) }
+          rescue_tp = @rescue_tp = TracePoint.new(:rescue) { on_rescue }
+          raise_tp.enable
+          rescue_tp.enable
         end
       end
 
+      #: () -> void
       def release
         @mutex.synchronize do
           @refcount -= 1
@@ -87,6 +99,7 @@ module Bulldogger
       # or the matching pop_and_raised_exit? at :return would read the
       # wrong checkpoint and desynchronize every later call on this
       # fiber.
+      #: () -> void
       def push_checkpoint
         (Thread.current[STACK_KEY] ||= []) << counter
       end
@@ -96,6 +109,7 @@ module Bulldogger
       # a plain stack -- not a per-target slot -- keeps recursive and
       # interleaved targets correctly paired) and reports whether the
       # counter moved since that call started.
+      #: () -> bool
       def pop_and_raised_exit?
         stack = Thread.current[STACK_KEY]
         checkpoint = stack && !stack.empty? ? stack.pop : 0
@@ -107,16 +121,19 @@ module Bulldogger
       # which is the exception currently unwinding through the
       # caller's frame. Stale otherwise; callers must gate on
       # pop_and_raised_exit?, not read this unconditionally.
+      #: () -> String?
       def current_exception_class_name
         Thread.current[CLASS_KEY]
       end
 
       private
 
+      #: () -> Integer
       def counter
         Thread.current[COUNTER_KEY] || 0
       end
 
+      #: (TracePoint tp) -> void
       def on_raise(tp)
         Thread.current[COUNTER_KEY] = counter + 1
         Thread.current[CLASS_KEY] = exception_class_name(tp.raised_exception)
@@ -124,12 +141,14 @@ module Bulldogger
         nil
       end
 
+      #: () -> void
       def on_rescue
         Thread.current[COUNTER_KEY] = counter - 1
       rescue Exception # rubocop:disable Lint/RescueException
         nil
       end
 
+      #: (Exception exception) -> String
       def exception_class_name(exception)
         klass = exception.class
         klass.respond_to?(:name) ? (klass.name || klass.to_s) : klass.to_s

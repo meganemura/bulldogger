@@ -1,0 +1,81 @@
+# Generated from lib/bulldogger/instance.rb with RBS::Inline
+
+module Bulldogger
+  # Owns one independent capture, run, and evidence lifecycle. One module
+  # singleton cannot serve as the reset subject and the outer observer. A
+  # separate instance lets a test suite reset the subject while the observer
+  # stays active. This class does not define file schemas or serialization.
+  #
+  # Each instance keeps its own :raise subscription. Two subscriptions fired
+  # independently in measurements, and disabling one left the other active.
+  # Each subscription cost about 0.03 microseconds per raise. A shared
+  # dispatcher would add a registry and lifecycle coordination without a
+  # measured need.
+  class Instance
+    attr_reader config: Config
+
+    @code_state: Hash[String, String?]?
+
+    @evidence: Evidence?
+
+    @run: Run?
+
+    @capture: Capture?
+
+    # : (?config: Config) -> void
+    def initialize: (?config: Config) -> void
+
+    # : () { (Config) -> void } -> self
+    def configure: () { (Config) -> void } -> self
+
+    # : () -> self
+    def start: () -> self
+
+    # : () -> self
+    def stop: () -> self
+
+    # : () -> bool
+    def running?: () -> bool
+
+    # : (Exception exception) -> snapshot?
+    def snapshot_for: (Exception exception) -> snapshot?
+
+    # : () -> Capture
+    def begin_test: () -> Capture
+
+    # : () -> Capture
+    def end_test: () -> Capture
+
+    # : (exception: Exception?, test: test_info?) -> String?
+    def record_failure: (exception: Exception?, test: test_info?) -> String?
+
+    # : () -> String?
+    def run_dir: () -> String?
+
+    # : () -> void
+    def finish: () -> void
+
+    # : (*String target_strings) { () -> void } -> String?
+    def probe: (*String target_strings) { () -> void } -> String?
+
+    # : (*String target_strings) -> Probe::Session?
+    def probe_start: (*String target_strings) -> Probe::Session?
+
+    # : (String path_a, String path_b) -> untyped
+    def probe_compare: (String path_a, String path_b) -> untyped
+
+    private
+
+    # : () -> Capture
+    def capture: () -> Capture
+
+    # : () -> Run
+    def run: () -> Run
+
+    # : () -> Evidence
+    def evidence: () -> Evidence
+
+    # : () -> Hash[String, String?]
+    def code_state: () -> Hash[String, String?]
+  end
+end

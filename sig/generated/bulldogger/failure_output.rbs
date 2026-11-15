@@ -1,0 +1,13 @@
+# Generated from lib/bulldogger/failure_output.rb with RBS::Inline
+
+module Bulldogger
+  # Formats the file guidance that the recorded evidence state supports.
+  # Integrations own framework output; this module only formats two stable lines.
+  module FailureOutput
+    # : (String path) -> Array[String]
+    def self?.lines: (String path) -> Array[String]
+
+    # : (String path) -> String
+    def self?.missing_origin_line: (String path) -> String
+  end
+end

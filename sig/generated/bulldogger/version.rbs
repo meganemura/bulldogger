@@ -1,0 +1,5 @@
+# Generated from lib/bulldogger/version.rb with RBS::Inline
+
+module Bulldogger
+  VERSION: ::String
+end

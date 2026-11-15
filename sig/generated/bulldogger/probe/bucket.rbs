@@ -1,0 +1,67 @@
+# Generated from lib/bulldogger/probe/bucket.rb with RBS::Inline
+
+module Bulldogger
+  module Probe
+    # One params[name]/returns aggregate: a running tally of observed
+    # classes and nil-ness (updated on every call), plus a bounded,
+    # fully-serialized sample of the first max_samples values.
+    #
+    # Tally and sample are deliberately split: full serialization
+    # measures ~24us/event, which would blow the probe overhead budget
+    # on a call-dense target if it ran on every call. Class name and
+    # nil? never touch #inspect, so the tally stays cheap regardless
+    # of how many calls a session sees.
+    class Bucket
+      @formatter: Formatter
+
+      @max_samples: Integer
+
+      @redacted_name: bool
+
+      # : (formatter: Formatter, max_samples: Integer, ?redacted_name: bool) -> void
+      def initialize: (formatter: Formatter, max_samples: Integer, ?redacted_name: bool) -> void
+
+      # : (untyped value) -> void
+      def record: (untyped value) -> void
+
+      # : () -> json
+      def to_h: () -> json
+
+      # Folds another Bucket's tally into this one. This is the
+      # finish-time merge step for thread-local aggregation: each
+      # thread records into its own Bucket with no lock, and totals
+      # are combined once, in one place, instead of every call taking
+      # a Mutex to update a single shared Bucket.
+      #
+      # Samples are re-capped at @max_samples here too: each
+      # thread-local Bucket already capped its own samples
+      # independently, so without this cap a target hit by N threads
+      # could publish up to N * max_samples samples, silently
+      # widening the documented limit just because more than one
+      # thread happened to record some of the calls.
+      # : (Bucket other) -> void
+      def merge!: (Bucket other) -> void
+
+      attr_reader count: Integer
+
+      attr_reader classes: Hash[String, Integer]
+
+      attr_reader nil_count: Integer
+
+      attr_reader samples: Array[json]
+
+      private
+
+      # Redaction gates on the parameter *name*, decided once at
+      # Bucket construction, never on the value: this bucket's caller
+      # (MethodStats) already checked the name against redact_patterns
+      # before a single value was ever inspected, matching Redactor's
+      # own rule of checking the name before touching the value.
+      # : (untyped value) -> json
+      def sample_for: (untyped value) -> json
+
+      # : (untyped value) -> String
+      def safe_class_name: (untyped value) -> String
+    end
+  end
+end

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "json"
 require "stringio"
@@ -10,6 +11,7 @@ module Bulldogger
   module Preflight
     module_function
 
+    #: (Array[String] command, ?stdout: IO, ?stderr: IO) -> Integer
     def run(command, stdout: $stdout, stderr: $stderr)
       raise ArgumentError, "preflight requires a command after --" if command.empty?
 
@@ -36,6 +38,7 @@ module Bulldogger
       2
     end
 
+    #: (Array[String] command) -> String
     def collect(command)
       report = StringIO.new
       Frames.run(command, stdout: report)
@@ -47,11 +50,13 @@ module Bulldogger
     end
     private_class_method :collect
 
+    #: (String path) -> bool
     def frame_summary?(path)
       File.foreach(path).any? { |line| JSON.parse(line)["type"] == "summary" }
     end
     private_class_method :frame_summary?
 
+    #: (String path) -> Array[Array[untyped]]
     def application_frames(path)
       File.foreach(path).filter_map do |line|
         record = JSON.parse(line)
@@ -62,12 +67,14 @@ module Bulldogger
     end
     private_class_method :application_frames
 
+    #: (Array[Array[untyped]] first_frames, Array[Array[untyped]] second_frames) -> Integer
     def first_divergence(first_frames, second_frames)
       limit = [first_frames.length, second_frames.length].min
       (0...limit).find { |index| first_frames[index] != second_frames[index] } || limit
     end
     private_class_method :first_divergence
 
+    #: (Array[untyped]? frame) -> String
     def format_frame(frame)
       return "(end of sequence)" unless frame
 

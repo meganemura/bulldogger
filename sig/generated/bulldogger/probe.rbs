@@ -1,0 +1,29 @@
+# Generated from lib/bulldogger/probe.rb with RBS::Inline
+
+module Bulldogger
+  # Targeted capture: instead of a snapshot at the moment a test fails
+  # (Capture), a probe watches
+  # one or a few named methods across many calls and reports the
+  # *shape* of what it saw -- argument and return classes, nil counts,
+  # raise-exit counts, callers -- so a coding agent can answer
+  # "what does this method actually receive and return" without
+  # reading every call site by hand.
+  #
+  # See lib/bulldogger/probe/session.rb for the mechanism: one
+  # TracePoint per target method (:call/:return, targeted -- cheap and
+  # strictly filtered) plus one shared, ref-counted pair of untargeted
+  # TracePoints (:raise/:rescue -- :raise cannot be targeted to one
+  # method, so this pair is the only way to tell a raise-exit apart
+  # from a method that legitimately returns nil; see
+  # raise_tracker.rb).
+  module Probe
+    # : (Array[String] target_strings, config: Config, run: Run) -> Session?
+    def self.start: (Array[String] target_strings, config: Config, run: Run) -> Session?
+
+    # : (Array[String] target_strings, config: Config, run: Run) { () -> void } -> String?
+    def self.call: (Array[String] target_strings, config: Config, run: Run) { () -> void } -> String?
+
+    # : (String path_a, String path_b) -> untyped
+    def self.compare: (String path_a, String path_b) -> untyped
+  end
+end

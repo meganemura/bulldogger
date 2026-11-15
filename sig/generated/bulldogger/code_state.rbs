@@ -1,0 +1,18 @@
+# Generated from lib/bulldogger/code_state.rb with RBS::Inline
+
+module Bulldogger
+  # Reads the Git marker that identifies one run's source state.
+  # Evidence storage and marker comparison stay outside this module.
+  module CodeState
+    # Git commands cost milliseconds, so callers compute this marker once per run.
+    # Raise hooks must not call this method.
+    # : (?String directory) -> Hash[String, String?]
+    def self?.capture: (?String directory) -> Hash[String, String?]
+
+    # : (String directory, *String arguments) -> [String, Process::Status]
+    def self?.git: (String directory, *String arguments) -> [ String, Process::Status ]
+
+    # : () -> Hash[String, String?]
+    def self?.null_state: () -> Hash[String, String?]
+  end
+end

@@ -1,0 +1,24 @@
+# Generated from lib/bulldogger/frames.rb with RBS::Inline
+
+module Bulldogger
+  # Runs one command with structural frame collection enabled.
+  # It does not select tests or change command arguments.
+  module Frames
+    SCHEMA_VERSION: ::Integer
+
+    # : (Array[String] command, ?output_dir: String, ?stdout: IO | StringIO) -> Process::Status
+    def self?.run: (Array[String] command, ?output_dir: String, ?stdout: IO | StringIO) -> Process::Status
+
+    # : (String path, Array[String] command, Process::Status status) -> void
+    def self?.append_envelope: (String path, Array[String] command, Process::Status status) -> void
+
+    # : (String path) -> json
+    def self?.read_summary: (String path) -> json
+
+    # : (Array[String] command) -> Integer?
+    def self?.seed_from: (Array[String] command) -> Integer?
+
+    # : (Process::Status status) -> String
+    def self?.outcome: (Process::Status status) -> String
+  end
+end

@@ -1,0 +1,10 @@
+# Generated from lib/bulldogger/collector_environment.rb with RBS::Inline
+
+module Bulldogger
+  # Builds a child environment that loads one collector.
+  # Each command remains responsible for its collector-specific variables.
+  module CollectorEnvironment
+    # : (String collector_name, Hash[String, String] variables) -> Hash[String, String]
+    def self?.build: (String collector_name, Hash[String, String] variables) -> Hash[String, String]
+  end
+end

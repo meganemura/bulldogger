@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# rbs_inline: enabled
 
 require "fileutils"
 require "json"
@@ -15,6 +16,7 @@ module Bulldogger
 
     module_function
 
+    #: (String fid, Array[String] command, line: Integer, statement: String, ?visit: Integer, ?index: String?, ?output_dir: String, ?stdout: IO, ?stderr: IO) -> (Process::Status | Integer)
     def run(fid, command, line:, statement:, visit: 1, index: nil, output_dir: ENV.fetch("BULLDOGGER_OUTPUT_DIR", "tmp/bulldogger"), stdout: $stdout, stderr: $stderr)
       target = ExecutionTarget.parse(fid, "exec")
       raise ArgumentError, "exec requires a command after --" if command.empty?
@@ -37,16 +39,16 @@ module Bulldogger
       _waited_pid, status = Process.wait2(pid)
       path = "#{base_path}-#{pid}.jsonl"
       outcome = Frames.send(:outcome, status)
-      records = File.file?(path) ? File.readlines(path, chomp: true).map { |entry| JSON.parse(entry) } : []
+      records = File.file?(path) ? File.readlines(path, chomp: true).map { |entry| JSON.parse(entry) } : [] #: Array[json]
       evaluation = records.reverse.find { |record| record["type"] == "evaluation" }
       summary = records.reverse.find { |record| record["type"] == "target_summary" }
       visit_summary = records.reverse.find { |record| record["type"] == "evaluation_summary" }
       result = {
         "type" => "result", "fid" => fid, "line" => line, "visit" => visit,
         "outcome" => outcome, "exit_status" => status.exitstatus
-      }
+      } #: json
       result.merge!(evaluation.reject { |key, _value| key == "type" }) if evaluation
-      envelope = { "type" => "envelope", "schema_version" => SCHEMA_VERSION, "code_state" => code_state, "command" => command }
+      envelope = { "type" => "envelope", "schema_version" => SCHEMA_VERSION, "code_state" => code_state, "command" => command } #: json
       if summary
         envelope["observed_calls"] = summary["observed_calls"]
         envelope["target_index"] = summary["target_index"]
@@ -68,12 +70,14 @@ module Bulldogger
       status
     end
 
+    #: (json summary) -> String
     def never_traced_note(summary)
       calls = summary.fetch("observed_calls")
       "target was never traced (method called #{calls} #{calls == 1 ? 'time' : 'times'} in the test window, target was call ##{summary.fetch('target_index')})"
     end
     private_class_method :never_traced_note
 
+    #: (String fid, json summary) -> String
     def never_evaluated_note(fid, summary)
       visits = summary.fetch("line_visits_observed")
       call_index = fid[/#(\d+)\z/, 1]
